@@ -43,9 +43,27 @@ JDK 17 이상과 Android SDK 35가 필요하다.
 
 ## 설치
 
+그냥 쓰려면 [최신 릴리즈](https://github.com/thsvkd/phone-curfew/releases/latest)에서 APK를
+폰으로 내려받아 눌러 설치한다. 설치 방법과 권한 설정은 릴리즈 노트에 적어 두었다.
+
+개발 중에는 adb로 붙인다.
+
 ```bash
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb shell appops set com.thsvkd.curfew GET_USAGE_STATS allow
 ```
 
-권한은 앱 안의 배너에서 시스템 설정으로 들어가 켜도 된다.
+## 릴리즈
+
+서명 자격 증명을 `~/.gradle/gradle.properties`에 둔 뒤 `./gradlew assembleRelease`로 만든다.
+
+```properties
+CURFEW_KEYSTORE=<키스토어 경로>
+CURFEW_KEYSTORE_PASSWORD=<비밀번호>
+CURFEW_KEY_ALIAS=curfew
+CURFEW_KEY_PASSWORD=<비밀번호>
+```
+
+이 값이 없으면 서명 설정 자체를 만들지 않으므로, 키가 없는 환경에서도 체크아웃과 디버그
+빌드는 그대로 된다. 키스토어를 잃어버리면 기존 설치 위에 덮어쓸 수 없고, 재설치하면 그때까지
+쌓인 기록이 사라진다.
