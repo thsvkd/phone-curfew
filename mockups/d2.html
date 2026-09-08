@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>수면 기록지</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&display=swap">
+<style>
+:root{
+  --paper:#F1F5EE; --grid:#DFE7DA; --ink:#1E2A22; --soft:#5C6D61;
+  --rule:#B9C7B2; --accent:#2F6D4F; --bad:#B4402E;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; width:390px; min-height:844px; color:var(--ink);
+  font-family:"Gowun Dodum","Malgun Gothic",sans-serif; font-size:14px; line-height:1.6;
+  background:
+    repeating-linear-gradient(to right, var(--grid) 0 1px, transparent 1px 22px),
+    repeating-linear-gradient(to bottom, var(--grid) 0 1px, transparent 1px 22px),
+    var(--paper);
+  padding:26px 22px 30px; display:flex; flex-direction:column; gap:20px;
+}
+h1{
+  font-family:"Gowun Batang",serif; font-weight:700; font-size:23px; margin:0;
+  letter-spacing:.04em;
+}
+.masthead{border-bottom:3px double var(--rule); padding-bottom:9px}
+.masthead p{margin:3px 0 0; font-size:11px; color:var(--soft); letter-spacing:.06em}
+.field{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap}
+.field .lbl{font-family:"Gowun Batang",serif; font-size:14px; white-space:nowrap}
+.field .tskin{
+  font-family:"Gowun Batang",serif; font-size:21px; color:var(--accent);
+  border-bottom:1.5px solid var(--rule); padding:0 7px 2px;
+}
+.field .tskin:focus-within{border-bottom-color:var(--accent); background:rgba(47,109,79,.07)}
+.field .to{font-family:"Gowun Batang",serif; font-size:15px; color:var(--soft)}
+.note{font-size:11px; color:var(--soft); margin:6px 0 0}
+/* 도장 */
+.record h2, .chart h2{
+  font-family:"Gowun Batang",serif; font-size:14px; margin:0 0 12px; letter-spacing:.05em;
+  border-left:3px solid var(--accent); padding-left:8px;
+}
+.stamps{display:flex; justify-content:space-between}
+.stamps span{display:flex; flex-direction:column; align-items:center; gap:6px; font-size:11px; color:var(--soft)}
+.stamps i{
+  width:32px; height:32px; border-radius:50%; display:grid; place-items:center;
+  font-family:"Gowun Batang",serif; font-size:15px; font-weight:700; font-style:normal;
+}
+.stamps i.ok{border:2px solid var(--accent); color:var(--accent); background:rgba(47,109,79,.09); transform:rotate(-6deg)}
+.stamps i.bad{border:2px solid var(--bad); color:var(--bad); background:rgba(180,64,46,.08); transform:rotate(5deg)}
+.tally{
+  margin-top:14px; padding-top:10px; border-top:1px solid var(--rule);
+  display:flex; justify-content:space-between; font-size:12px; color:var(--soft);
+}
+.tally b{font-family:"Gowun Batang",serif; font-size:15px; color:var(--ink); font-weight:700}
+/* 차트 */
+.chart-head{display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:6px}
+.seg{display:flex; gap:0; border:1px solid var(--rule); border-radius:2px; overflow:hidden}
+.seg button{
+  font-family:"Gowun Dodum",sans-serif; font-size:12px; padding:4px 12px; cursor:pointer;
+  background:none; border:0; color:var(--soft);
+}
+.seg button.is-on{background:var(--accent); color:var(--paper)}
+.seg button:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+svg{display:block; width:100%; height:auto; background:rgba(255,255,255,.55); border:1px solid var(--rule)}
+.cx-band{fill:rgba(47,109,79,.10)}
+.cx-grid{stroke:var(--rule); stroke-width:.7}
+.cx-label{fill:var(--soft); font-family:"Gowun Dodum",sans-serif; font-size:9px}
+.cx-label-y{text-anchor:end}
+.cx-bar{fill:var(--ink); opacity:.75}
+.cx-line{fill:none; stroke:var(--ink); stroke-width:1.3; stroke-linejoin:round}
+.cx-area{fill:var(--accent); opacity:.14}
+.verdict{
+  font-family:"Gowun Batang",serif; font-size:14px; padding:12px 14px;
+  border:1px solid var(--rule); border-left:4px solid var(--accent); background:rgba(255,255,255,.6);
+}
+.verdict b{color:var(--accent)}
+</style>
+</head>
+<body>
+  <header class="masthead">
+    <h1>수면 기록지</h1>
+    <p>기상 후 작성 · 2026년 9월</p>
+  </header>
+
+  <section>
+    <div class="field">
+      <span class="lbl">사용 금지</span>
+      <input type="time" id="from" value="02:00" step="600" aria-label="제한 시작 시각">
+      <span class="to">부터</span>
+      <input type="time" id="to" value="07:00" step="600" aria-label="제한 종료 시각">
+      <span class="to">까지</span>
+    </div>
+    <p class="note">이 칸을 고치면 아래 기록이 새 기준으로 다시 채점됩니다.</p>
+  </section>
+
+  <section class="record">
+    <h2>이번 주 기록</h2>
+    <div class="stamps" id="stamps"></div>
+    <div class="tally">
+      <span>성공 <b id="week"></b> / 7일</span>
+      <span>연속 <b id="streak"></b></span>
+    </div>
+  </section>
+
+  <section class="chart">
+    <div class="chart-head">
+      <h2 id="day"></h2>
+      <div class="seg">
+        <button type="button" data-mode="line" class="is-on" aria-pressed="true">선</button>
+        <button type="button" data-mode="bar" aria-pressed="false">막대</button>
+      </div>
+    </div>
+    <svg id="chart" role="img" aria-label="10분 간격 핸드폰 사용 그래프"></svg>
+    <p class="note">세로축은 10분 구간 중 화면을 켜 둔 분입니다.</p>
+  </section>
+
+  <p class="verdict" id="verdict"></p>
+
+<script src="common.js"></script>
+<script>
+document.getElementById('day').textContent = DAY_LABEL;
+document.getElementById('week').textContent = WEEK_OK;
+document.getElementById('streak').textContent = STREAK + '일';
+document.getElementById('stamps').innerHTML = WEEK.map(function (x) {
+  return '<span><i class="' + (x.ok ? 'ok' : 'bad') + '">' + (x.ok ? '○' : '×') +
+         '</i>' + x.w + '</span>';
+}).join('');
+
+wireDraft({
+  svg: '#chart', from: '#from', to: '#to', toggle: '.seg button',
+  onRender: function (min) {
+    document.getElementById('verdict').innerHTML = min === 0
+      ? '제한 시간대 사용 <b>0분</b>. 어젯밤도 약속을 지켰습니다.'
+      : '제한 시간대에 <b>' + min + '분</b> 사용했습니다. 오늘 밤 다시 시작합니다.';
+  }
+});
+</script>
+</body>
+</html>

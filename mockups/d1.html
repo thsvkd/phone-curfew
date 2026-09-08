@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>야간 계기판</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#0E1220; --surface:#161D31; --raise:#1E2740; --hair:#28324F;
+  --text:#E6EAF6; --muted:#7F8AAC; --accent:#4DD0C4; --ok:#5CD98C; --bad:#FF6B6B;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; width:390px; min-height:844px; background:var(--bg); color:var(--text);
+  font-family:"IBM Plex Sans KR","Malgun Gothic",sans-serif; font-size:14px; line-height:1.5;
+  display:flex; flex-direction:column; gap:14px; padding:20px 16px 24px;
+}
+.eyebrow{
+  font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--muted);
+}
+/* 제한 시간대 */
+.curfew{background:var(--surface); border:1px solid var(--hair); border-radius:10px; padding:14px 16px 16px}
+.curfew-top{display:flex; justify-content:space-between; align-items:center}
+.pill{
+  font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.08em;
+  color:var(--accent); border:1px solid rgba(77,208,196,.4); border-radius:999px; padding:2px 8px;
+}
+.range{display:flex; align-items:baseline; gap:10px; margin-top:8px}
+.range .tskin{
+  font-family:"IBM Plex Mono",monospace; font-size:30px; font-weight:600; letter-spacing:-.02em;
+  color:var(--text);
+}
+.range .tskin:focus-within{outline:2px solid var(--accent); outline-offset:3px; border-radius:4px}
+.range .arrow{color:var(--muted); font-size:18px}
+.track{position:relative; height:6px; margin-top:14px; border-radius:3px; background:var(--raise); overflow:hidden}
+.track b{position:absolute; top:0; bottom:0; background:var(--accent); opacity:.55; display:block}
+.ticks{display:flex; justify-content:space-between; margin-top:5px;
+  font-family:"IBM Plex Mono",monospace; font-size:9px; color:var(--muted)}
+/* 성공 기록 */
+.streak{display:flex; align-items:center; gap:14px; padding:0 2px}
+.dots{display:flex; gap:9px}
+.dots span{display:flex; flex-direction:column; align-items:center; gap:5px;
+  font-family:"IBM Plex Mono",monospace; font-size:9px; color:var(--muted)}
+.dots i{width:14px; height:14px; border-radius:50%; display:block}
+.dots i.ok{background:var(--ok); box-shadow:0 0 0 3px rgba(92,217,140,.14)}
+.dots i.bad{background:var(--bad); box-shadow:0 0 0 3px rgba(255,107,107,.14)}
+.streak-now{margin-left:auto; text-align:right}
+.streak-now b{display:block; font-family:"IBM Plex Mono",monospace; font-size:20px; color:var(--ok)}
+.streak-now small{color:var(--muted); font-size:10px}
+/* 차트 */
+.chart{background:var(--surface); border:1px solid var(--hair); border-radius:10px; padding:14px 12px 10px}
+.chart-head{display:flex; justify-content:space-between; align-items:center; padding:0 4px 10px}
+.chart-head h2{margin:0; font-size:13px; font-weight:500}
+.chart-head .eyebrow{margin-top:2px}
+.seg{display:flex; border:1px solid var(--hair); border-radius:6px; overflow:hidden}
+.seg button{
+  font-family:"IBM Plex Mono",monospace; font-size:11px; padding:5px 11px;
+  background:none; border:0; color:var(--muted); cursor:pointer;
+}
+.seg button.is-on{background:var(--raise); color:var(--accent)}
+.seg button:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+svg{display:block; width:100%; height:auto}
+.cx-band{fill:rgba(77,208,196,.10)}
+.cx-grid{stroke:var(--hair); stroke-width:1; stroke-dasharray:2 4}
+.cx-label{fill:var(--muted); font-family:"IBM Plex Mono",monospace; font-size:9px}
+.cx-label-y{text-anchor:end}
+.cx-bar{fill:var(--accent); opacity:.85}
+.cx-line{fill:none; stroke:var(--accent); stroke-width:1.6; stroke-linejoin:round}
+.cx-area{fill:var(--accent); opacity:.13}
+/* 통계 */
+.stats{display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--hair);
+  border:1px solid var(--hair); border-radius:10px; overflow:hidden}
+.stats div{background:var(--surface); padding:12px 10px}
+.stats dt{margin:0; font-size:10px; color:var(--muted)}
+.stats dd{margin:4px 0 0; font-family:"IBM Plex Mono",monospace; font-size:17px; font-weight:600}
+.stats dd.good{color:var(--ok)}
+@media (prefers-reduced-motion:no-preference){.dots i{transition:box-shadow .2s}}
+</style>
+</head>
+<body>
+  <section class="curfew">
+    <div class="curfew-top">
+      <span class="eyebrow">제한 시간대</span>
+      <span class="pill">매일 반복 · 켜짐</span>
+    </div>
+    <div class="range">
+      <input type="time" id="from" value="02:00" step="600" aria-label="제한 시작 시각">
+      <span class="arrow">&rarr;</span>
+      <input type="time" id="to" value="07:00" step="600" aria-label="제한 종료 시각">
+    </div>
+    <div class="track"><b id="band"></b></div>
+    <div class="ticks"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div>
+  </section>
+
+  <section class="streak">
+    <div class="dots" id="dots"></div>
+    <div class="streak-now"><b id="streak">3일</b><small>연속 성공</small></div>
+  </section>
+
+  <section class="chart">
+    <div class="chart-head">
+      <div>
+        <h2 id="day"></h2>
+        <div class="eyebrow">10분 간격 · 화면 켠 시간</div>
+      </div>
+      <div class="seg">
+        <button type="button" data-mode="line" class="is-on" aria-pressed="true">선</button>
+        <button type="button" data-mode="bar" aria-pressed="false">막대</button>
+      </div>
+    </div>
+    <svg id="chart" role="img" aria-label="10분 간격 핸드폰 사용 그래프"></svg>
+  </section>
+
+  <dl class="stats">
+    <div><dt>하루 총 사용</dt><dd id="total"></dd></div>
+    <div><dt>제한 시간대</dt><dd id="inside" class="good"></dd></div>
+    <div><dt>이번 주 성공</dt><dd id="week"></dd></div>
+  </dl>
+
+<script src="common.js"></script>
+<script>
+document.getElementById('day').textContent = DAY_LABEL;
+document.getElementById('total').textContent = fmtDuration(TOTAL_MIN);
+document.getElementById('week').textContent = WEEK_OK + '/7';
+document.getElementById('streak').textContent = STREAK + '일';
+document.getElementById('dots').innerHTML = WEEK.map(function (x) {
+  return '<span><i class="' + (x.ok ? 'ok' : 'bad') + '"></i>' + x.w + '</span>';
+}).join('');
+
+wireDraft({
+  svg: '#chart', from: '#from', to: '#to', toggle: '.seg button',
+  onRender: function (min, s, e) {
+    var band = document.getElementById('band');
+    var span = s <= e ? (e - s) : (24 - s + e);
+    band.style.left = (s / 24 * 100) + '%';
+    band.style.width = Math.min(24 - s, span) / 24 * 100 + '%';
+    var el = document.getElementById('inside');
+    el.textContent = min + '분';
+    el.className = min === 0 ? 'good' : '';
+  }
+});
+</script>
+</body>
+</html>

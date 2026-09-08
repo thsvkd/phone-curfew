@@ -1,0 +1,31 @@
+{
+  "savedAt": "2026-09-07T17:23:45.144Z",
+  "overall": "",
+  "drafts": {
+    "d1": {
+      "name": "야간 계기판",
+      "picked": false,
+      "note": ""
+    },
+    "d2": {
+      "name": "수면 기록지",
+      "picked": false,
+      "note": ""
+    },
+    "d3": {
+      "name": "주간 성적표",
+      "picked": false,
+      "note": ""
+    },
+    "d4": {
+      "name": "위젯 스택",
+      "picked": true,
+      "note": ""
+    },
+    "d5": {
+      "name": "커퓨 터미널",
+      "picked": false,
+      "note": ""
+    }
+  }
+}

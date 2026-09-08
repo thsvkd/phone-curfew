@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>주간 성적표</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+:root{
+  --bg:#FFFFFF; --ink:#0B0B0C; --soft:#6B6B72; --hair:#E2E2E6;
+  --accent:#1D4ED8; --ok:#16A34A; --bad:#DC2626; --okdim:#DCF3E4; --baddim:#FBE0E0;
+  --band:rgba(29,78,216,.09); --pick:none;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0C0C0E; --ink:#F2F2F4; --soft:#95959E; --hair:#26262B;
+    --accent:#7CA0FF; --ok:#4ADE80; --bad:#F87171; --okdim:#16321F; --baddim:#341A1A;
+    --band:rgba(124,160,255,.13); --pick:invert(1);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0C0C0E; --ink:#F2F2F4; --soft:#95959E; --hair:#26262B;
+  --accent:#7CA0FF; --ok:#4ADE80; --bad:#F87171; --okdim:#16321F; --baddim:#341A1A;
+  --band:rgba(124,160,255,.13); --pick:invert(1);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; width:390px; min-height:844px; background:var(--bg); color:var(--ink);
+  font-family:"Noto Sans KR","Malgun Gothic",sans-serif; font-size:14px; line-height:1.55;
+  padding:26px 20px 28px; display:flex; flex-direction:column; gap:22px;
+}
+.head{display:flex; justify-content:space-between; align-items:baseline; gap:10px}
+.head .lbl{font-size:11px; font-weight:500; letter-spacing:.1em; color:var(--soft)}
+.head .set{display:flex; align-items:baseline; gap:4px; font-weight:700}
+.head .tskin{
+  font-family:"Noto Sans KR",sans-serif; font-weight:700; font-size:15px; color:var(--accent);
+  border-bottom:2px solid var(--accent); padding:0 2px 1px;
+}
+.head .tskin:focus-within{outline:2px solid var(--accent); outline-offset:2px}
+/* 히어로: 주간 성공 원 */
+.hero h1{
+  font-family:"Black Han Sans",sans-serif; font-weight:400; font-size:46px; line-height:1;
+  margin:0 0 4px; letter-spacing:-.01em; text-wrap:balance;
+}
+.hero h1 em{font-style:normal; color:var(--ok)}
+.hero p{margin:0; color:var(--soft); font-size:13px}
+.week{display:flex; justify-content:space-between; margin-top:22px}
+.week span{display:flex; flex-direction:column; align-items:center; gap:8px}
+.week i{width:38px; height:38px; border-radius:50%; display:block}
+.week i.ok{background:var(--ok)}
+.week i.bad{background:var(--baddim); border:3px solid var(--bad)}
+.week small{font-size:11px; color:var(--soft); font-weight:500}
+.week span.last small{color:var(--ink); font-weight:700}
+.latest{
+  margin-top:20px; display:flex; align-items:center; gap:10px; padding:12px 14px;
+  background:var(--okdim); border-radius:4px; font-size:13px; font-weight:500;
+}
+.latest b{font-family:"Black Han Sans",sans-serif; font-weight:400; font-size:18px; color:var(--ok)}
+/* 차트: 보조 */
+.chart{border-top:2px solid var(--ink); padding-top:14px}
+.chart-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px}
+.chart-head h2{margin:0; font-size:13px; font-weight:700}
+.chart-head span{font-size:11px; color:var(--soft)}
+.seg{display:flex; gap:12px}
+.seg button{
+  font-family:"Noto Sans KR",sans-serif; font-size:12px; font-weight:500; padding:0 0 2px;
+  background:none; border:0; border-bottom:2px solid transparent; color:var(--soft); cursor:pointer;
+}
+.seg button.is-on{color:var(--ink); font-weight:700; border-bottom-color:var(--accent)}
+.seg button:focus-visible{outline:2px solid var(--accent); outline-offset:3px}
+svg{display:block; width:100%; height:auto}
+.cx-band{fill:var(--band)}
+.cx-grid{stroke:var(--hair); stroke-width:1}
+.cx-label{fill:var(--soft); font-family:"Noto Sans KR",sans-serif; font-size:9px}
+.cx-label-y{text-anchor:end}
+.cx-bar{fill:var(--accent)}
+.cx-line{fill:none; stroke:var(--accent); stroke-width:1.8; stroke-linejoin:round}
+.cx-area{fill:var(--accent); opacity:.12}
+.foot{display:flex; justify-content:space-between; font-size:12px; color:var(--soft)}
+.foot b{color:var(--ink); font-weight:700}
+</style>
+</head>
+<body>
+  <div class="head">
+    <span class="lbl">사용 제한</span>
+    <span class="set">
+      <input type="time" id="from" value="02:00" step="600" aria-label="제한 시작 시각">
+      &ndash;
+      <input type="time" id="to" value="07:00" step="600" aria-label="제한 종료 시각">
+    </span>
+  </div>
+
+  <section class="hero">
+    <h1>이번 주 <em id="week">5</em>일 성공</h1>
+    <p>친구와 약속한 취침 시각까지 남은 밤: 오늘 포함 3일</p>
+    <div class="week" id="dots"></div>
+    <div class="latest"><b id="streak">3일</b> 연속으로 새벽 2시를 지켰습니다</div>
+  </section>
+
+  <section class="chart">
+    <div class="chart-head">
+      <div>
+        <h2 id="day"></h2>
+        <span>10분 간격</span>
+      </div>
+      <div class="seg">
+        <button type="button" data-mode="line" class="is-on" aria-pressed="true">선</button>
+        <button type="button" data-mode="bar" aria-pressed="false">막대</button>
+      </div>
+    </div>
+    <svg id="chart" role="img" aria-label="10분 간격 핸드폰 사용 그래프"></svg>
+    <div class="foot">
+      <span>하루 총 <b id="total"></b></span>
+      <span>제한 시간대 <b id="inside"></b></span>
+    </div>
+  </section>
+
+<script src="common.js"></script>
+<script>
+document.getElementById('day').textContent = DAY_LABEL;
+document.getElementById('week').textContent = WEEK_OK;
+document.getElementById('streak').textContent = STREAK + '일';
+document.getElementById('total').textContent = fmtDuration(TOTAL_MIN);
+document.getElementById('dots').innerHTML = WEEK.map(function (x, i) {
+  return '<span class="' + (i === WEEK.length - 1 ? 'last' : '') + '">' +
+         '<i class="' + (x.ok ? 'ok' : 'bad') + '"></i><small>' + x.w + '</small></span>';
+}).join('');
+
+wireDraft({
+  svg: '#chart', from: '#from', to: '#to', toggle: '.seg button',
+  onRender: function (min) {
+    document.getElementById('inside').textContent = min + '분';
+  }
+});
+</script>
+</body>
+</html>

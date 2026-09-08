@@ -1,0 +1,15 @@
+# Gradle
+.gradle/
+build/
+.kotlin/
+
+# 기기마다 다른 SDK 경로
+local.properties
+
+# IDE
+*.iml
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

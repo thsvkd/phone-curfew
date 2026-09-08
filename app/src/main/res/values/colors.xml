@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#141220</color>
+    <!-- Compose가 그리기 전에 잠깐 보이는 창 배경. 앱 배경색과 맞춘다. -->
+    <color name="window_background">#F4F2FB</color>
+</resources>

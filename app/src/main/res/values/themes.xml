@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Compose가 화면을 통째로 그리므로 부모 테마는 시스템 위젯 기본값 역할만 한다.
+         눈에 남는 것은 창 배경뿐이라 그것만 주야로 나눈다. -->
+    <style name="Theme.Curfew" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
+</resources>

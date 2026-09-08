@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>위젯 스택</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;500;700;800&display=swap">
+<style>
+:root{
+  --bg:#F4F2FB; --card:#FFFFFF; --ink:#282237; --soft:#7E7695; --hair:#EAE6F4;
+  --accent:#6C4FE0; --accent-dim:#EDE8FD; --ok:#2FA96A; --bad:#E0474C;
+  --shadow:0 1px 2px rgba(40,34,55,.05), 0 8px 24px rgba(40,34,55,.07);
+  --pick:none;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#141220; --card:#1F1B2D; --ink:#EFECF8; --soft:#9E96B8; --hair:#2C2740;
+    --accent:#A98DFF; --accent-dim:#2A2340; --ok:#4FCB8B; --bad:#FF7A7E;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.32);
+    --pick:invert(1);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141220; --card:#1F1B2D; --ink:#EFECF8; --soft:#9E96B8; --hair:#2C2740;
+  --accent:#A98DFF; --accent-dim:#2A2340; --ok:#4FCB8B; --bad:#FF7A7E;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.32);
+  --pick:invert(1);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; width:390px; min-height:844px; background:var(--bg); color:var(--ink);
+  font-family:"Gothic A1","Malgun Gothic",sans-serif; font-size:14px; line-height:1.5;
+  padding:24px 18px 28px; display:flex; flex-direction:column; gap:14px;
+}
+.title{margin:0 0 2px; font-size:22px; font-weight:800; letter-spacing:-.02em}
+.sub{margin:0 0 6px; color:var(--soft); font-size:13px}
+.card{background:var(--card); border-radius:20px; padding:18px; box-shadow:var(--shadow)}
+.card h2{margin:0 0 14px; font-size:12px; font-weight:700; color:var(--soft); letter-spacing:.04em}
+/* 시간대 카드 */
+.times{display:flex; align-items:center; gap:10px}
+.chip{
+  flex:1; background:var(--accent-dim); border-radius:14px; padding:10px 12px;
+}
+.chip span{display:block; font-size:11px; color:var(--soft); margin-bottom:2px}
+.chip .tskin{
+  font-family:"Gothic A1",sans-serif; font-weight:700; font-size:22px; color:var(--accent);
+  display:flex; width:100%; font-variant-numeric:tabular-nums;
+}
+.chip .tskin:focus-within{outline:2px solid var(--accent); outline-offset:3px; border-radius:4px}
+.times .dash{color:var(--soft); font-weight:700}
+.hint{margin:12px 0 0; font-size:12px; color:var(--soft)}
+/* 주간 카드 */
+.week-top{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:16px}
+.week-top b{font-size:26px; font-weight:800; letter-spacing:-.02em}
+.week-top b small{font-size:14px; font-weight:500; color:var(--soft)}
+.badge{
+  background:var(--accent-dim); color:var(--accent); font-size:12px; font-weight:700;
+  border-radius:999px; padding:5px 12px;
+}
+.dots{display:flex; justify-content:space-between}
+.dots span{display:flex; flex-direction:column; align-items:center; gap:8px; font-size:11px; color:var(--soft)}
+.dots i{width:22px; height:22px; border-radius:50%; display:block}
+.dots i.ok{background:var(--ok)}
+.dots i.bad{background:var(--bad)}
+.dots span.today i{box-shadow:0 0 0 3px var(--card), 0 0 0 5px var(--accent)}
+/* 차트 카드 */
+.chart-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px}
+.chart-head h2{margin:0}
+.seg{display:flex; background:var(--bg); border-radius:999px; padding:3px}
+.seg button{
+  font-family:"Gothic A1",sans-serif; font-size:12px; font-weight:700; padding:5px 14px;
+  background:none; border:0; border-radius:999px; color:var(--soft); cursor:pointer;
+}
+.seg button.is-on{background:var(--card); color:var(--accent); box-shadow:0 1px 3px rgba(40,34,55,.12)}
+.seg button:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+svg{display:block; width:100%; height:auto}
+.cx-band{fill:var(--accent); opacity:.10}
+.cx-grid{stroke:var(--hair); stroke-width:1}
+.cx-label{fill:var(--soft); font-family:"Gothic A1",sans-serif; font-size:9px}
+.cx-label-y{text-anchor:end}
+.cx-bar{fill:var(--accent); rx:.8}
+.cx-line{fill:none; stroke:var(--accent); stroke-width:2; stroke-linejoin:round; stroke-linecap:round}
+.cx-area{fill:var(--accent); opacity:.15}
+.legend{display:flex; gap:14px; margin-top:10px; font-size:11px; color:var(--soft)}
+.legend em{font-style:normal; color:var(--ink); font-weight:700}
+</style>
+</head>
+<body>
+  <div>
+    <h1 class="title">잘 자고 있나요</h1>
+    <p class="sub" id="sub"></p>
+  </div>
+
+  <section class="card">
+    <h2>사용 제한 시간대</h2>
+    <div class="times">
+      <label class="chip"><span>시작</span>
+        <input type="time" id="from" value="02:00" step="600" aria-label="제한 시작 시각"></label>
+      <span class="dash">&ndash;</span>
+      <label class="chip"><span>해제</span>
+        <input type="time" id="to" value="07:00" step="600" aria-label="제한 종료 시각"></label>
+    </div>
+    <p class="hint">이 시간에는 잠금 화면만 열리고 알림은 아침까지 모아 둡니다.</p>
+  </section>
+
+  <section class="card">
+    <div class="week-top">
+      <b><span id="week"></span><small> / 7일 성공</small></b>
+      <span class="badge" id="streak"></span>
+    </div>
+    <div class="dots" id="dots"></div>
+  </section>
+
+  <section class="card">
+    <div class="chart-head">
+      <h2 id="day"></h2>
+      <div class="seg">
+        <button type="button" data-mode="line" class="is-on" aria-pressed="true">선</button>
+        <button type="button" data-mode="bar" aria-pressed="false">막대</button>
+      </div>
+    </div>
+    <svg id="chart" role="img" aria-label="10분 간격 핸드폰 사용 그래프"></svg>
+    <div class="legend">
+      <span>총 사용 <em id="total"></em></span>
+      <span>제한 시간대 <em id="inside"></em></span>
+      <span>10분 간격</span>
+    </div>
+  </section>
+
+<script src="common.js"></script>
+<script>
+document.getElementById('day').textContent = DAY_LABEL;
+document.getElementById('week').textContent = WEEK_OK;
+document.getElementById('streak').textContent = STREAK + '일 연속';
+document.getElementById('total').textContent = fmtDuration(TOTAL_MIN);
+document.getElementById('sub').textContent = '최근 결과는 성공이었습니다 · ' + WEEK[WEEK.length - 1].d;
+document.getElementById('dots').innerHTML = WEEK.map(function (x, i) {
+  return '<span class="' + (i === WEEK.length - 1 ? 'today' : '') + '">' +
+         '<i class="' + (x.ok ? 'ok' : 'bad') + '"></i>' + x.w + '</span>';
+}).join('');
+
+wireDraft({
+  svg: '#chart', from: '#from', to: '#to', toggle: '.seg button',
+  onRender: function (min) {
+    document.getElementById('inside').textContent = min + '분';
+  }
+});
+</script>
+</body>
+</html>
