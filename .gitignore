@@ -9,8 +9,13 @@ local.properties
 # 서명 키와 자격 증명. 저장소에 들어오면 안 된다.
 *.jks
 *.keystore
+*.p12
 keystore.properties
 signing.properties
+
+# 빌드 산출물. 실수로 22MB짜리를 커밋하지 않도록.
+*.apk
+*.aab
 
 # IDE
 *.iml

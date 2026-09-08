@@ -2,6 +2,7 @@
 """Draft review server: static files + one feedback.json endpoint."""
 import http.server
 import json
+import os
 import pathlib
 import socketserver
 import sys
@@ -10,6 +11,17 @@ ROOT = pathlib.Path(__file__).resolve().parent
 FEEDBACK = ROOT / "feedback.json"
 DOCS = {"/PRD.md": ROOT.parent / "PRD.md", "/SPEC.md": ROOT.parent / "SPEC.md"}
 MAX_BODY = 1_000_000
+
+# DNS 리바인딩은 바로 이런 loopback 서버를 노린다. 공격자가 자기 도메인을 127.0.0.1로
+# 가리키게 하면 브라우저는 같은 출처로 여기고 이 서버에 요청을 보내는데, 그때 Host 헤더에는
+# 공격자의 도메인이 실린다. 그래서 알고 있는 이름으로만 응답한다. tailnet 이름 같은 사설
+# 정보를 소스에 남기지 않도록 추가 이름은 환경 변수로 받는다.
+ALLOWED_HOSTS = {"127.0.0.1", "localhost", "[::1]"}
+ALLOWED_HOSTS.update(
+    name.strip().lower()
+    for name in os.environ.get("CURFEW_ALLOWED_HOSTS", "").split(",")
+    if name.strip()
+)
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -25,12 +37,19 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def host_allowed(self):
+        host = (self.headers.get("Host") or "").rsplit(":", 1)[0].strip().lower()
+        return host in ALLOWED_HOSTS
+
     def list_directory(self, path):
         # 기본 구현은 디렉터리 내용을 그대로 보여 준다. 색인 파일이 없으면 그냥 막는다.
         self.send_error(404)
         return None
 
     def do_GET(self):
+        if not self.host_allowed():
+            self.send_error(421, "unexpected Host")
+            return
         doc = DOCS.get(self.path)
         if doc is not None:
             body = doc.read_bytes()
@@ -50,6 +69,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         super().do_GET()
 
     def do_POST(self):
+        if not self.host_allowed():
+            self.send_error(421, "unexpected Host")
+            return
         if self.path != "/feedback":
             self.send_error(404)
             return
@@ -131,6 +153,19 @@ def selftest():
         raise AssertionError("text/plain 요청이 통과했다")
     except urllib.error.HTTPError as err:
         assert err.code == 415, err.code
+
+    # 모르는 Host로 오는 요청은 읽기든 쓰기든 거절되어야 한다.
+    for path, data in (("/PRD.md", None), ("/feedback", b"{}")):
+        rebind = urllib.request.Request(
+            base + path,
+            data=data,
+            headers={"Host": "attacker.example", "Content-Type": "application/json"},
+        )
+        try:
+            urllib.request.urlopen(rebind)
+            raise AssertionError("%s 가 낯선 Host를 받아들였다" % path)
+        except urllib.error.HTTPError as err:
+            assert err.code == 421, (path, err.code)
     srv.shutdown()
     print("selftest ok")
 
