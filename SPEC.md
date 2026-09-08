@@ -33,6 +33,11 @@ minSdk를 29로 잡은 이유는 아래 4장에서 쓰는 `UsageEvents.Event` �
 `RECEIVE_BOOT_COMPLETED`가 필요 없고, 수집이 끊긴 사실은 알림 대신 화면 배너로 알리므로
 `POST_NOTIFICATIONS`도 필요 없다. 근거는 각각 4.4와 4.5에 적었다.
 
+`android:allowBackup`은 `false`로 둔다. 켜 두면 Android 자동 백업이 `curfew.db`를 클라우드로
+올리고, Android 10과 11에서는 `adb backup`으로도 그대로 뽑힌다. 이 기록은 사용자가 매일 몇 시에
+자고 깼는지를 10분 해상도로 드러내므로, 데이터가 기기를 벗어나지 않는다는 PRD D-3의 전제를
+지키려면 백업을 꺼야 한다. 기기를 바꿀 때의 이전은 설정 화면의 CSV 내보내기로 대신한다.
+
 `PACKAGE_USAGE_STATS`는 일반적인 런타임 요청으로 받을 수 없고, `Settings.ACTION_USAGE_ACCESS_SETTINGS` 인텐트로 시스템 설정 화면을 열어 사용자가 직접 켜야 한다.
 
 허용 여부 확인은 `AppOpsManager`의 `OPSTR_GET_USAGE_STATS`를 `unsafeCheckOpNoThrow`로 조회한다. 앱이 포그라운드로 올라올 때마다 확인하며, 허용되어 있지 않으면 화면 최상단에 설정 화면으로 가는 배너를 띄운다.

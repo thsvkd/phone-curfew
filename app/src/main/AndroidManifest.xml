@@ -6,9 +6,13 @@
         android:name="android.permission.PACKAGE_USAGE_STATS"
         tools:ignore="ProtectedPermissions" />
 
+    <!-- allowBackup을 끄는 이유. 사용 기록은 잠든 시각과 깬 시각을 10분 해상도로
+         드러낸다. 자동 백업을 켜면 그 기록이 클라우드로 올라가고, Android 10과
+         11에서는 adb backup으로도 뽑힌다. 데이터가 기기를 벗어나지 않는다는
+         전제를 지키려면 꺼 두어야 한다. -->
     <application
         android:name=".CurfewApp"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
