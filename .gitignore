@@ -6,6 +6,12 @@ build/
 # 기기마다 다른 SDK 경로
 local.properties
 
+# 서명 키와 자격 증명. 저장소에 들어오면 안 된다.
+*.jks
+*.keystore
+keystore.properties
+signing.properties
+
 # IDE
 *.iml
 .idea/
