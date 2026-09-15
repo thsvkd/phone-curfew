@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RangeSlider
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -41,6 +42,7 @@ import com.thsvkd.curfew.collect.UsageAccess
 import com.thsvkd.curfew.data.CurfewDb
 import com.thsvkd.curfew.data.CurfewSettings
 import com.thsvkd.curfew.data.SettingsStore
+import com.thsvkd.curfew.score.windowFor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -49,8 +51,10 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlin.math.roundToInt
 
 class SettingsViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -64,6 +68,22 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setToleranceSeconds(seconds: Int) {
         viewModelScope.launch { store.setToleranceSeconds(seconds) }
+    }
+
+    fun setNightWork(startMinutes: Int, endMinutes: Int) {
+        viewModelScope.launch { store.setNightWork(startMinutes, endMinutes) }
+    }
+
+    /** 오늘 밤 야근 구간에 이미 쌓인 사용 기록을 0으로 지운다. */
+    fun clearNightWorkUsage(startMinutes: Int, endMinutes: Int) {
+        viewModelScope.launch {
+            val zone = ZoneId.systemDefault()
+            val window = windowFor(LocalDate.now(zone), zone, startMinutes, endMinutes)
+            if (window != null) {
+                dao.zeroUsage(window.startMs, window.endMs)
+                message.value = "야근 시간대 사용 기록을 지웠습니다"
+            }
+        }
     }
 
     fun clearAll() {
@@ -122,6 +142,15 @@ fun SettingsScreen(onBack: () -> Unit, onFixPermission: () -> Unit) {
         }
 
         ToleranceCard(settings.toleranceSeconds, vm::setToleranceSeconds)
+
+        if (settings.toleranceSeconds == 30 * 60) {
+            NightWorkCard(
+                startMinutes = settings.nightWorkStartMinutes,
+                endMinutes = settings.nightWorkEndMinutes,
+                onChange = vm::setNightWork,
+                onClear = vm::clearNightWorkUsage,
+            )
+        }
 
         ActionCard(
             title = "사용량 접근 권한",
@@ -193,7 +222,7 @@ private fun ToleranceCard(toleranceSeconds: Int, onChange: (Int) -> Unit) {
                     modifier = Modifier.weight(1f),
                 )
                 Text(
-                    "${minutes.toInt()}분",
+                    "${minutes.roundToInt()}분",
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -208,10 +237,65 @@ private fun ToleranceCard(toleranceSeconds: Int, onChange: (Int) -> Unit) {
             Slider(
                 value = minutes,
                 onValueChange = { minutes = it },
-                onValueChangeFinished = { onChange(minutes.toInt() * 60) },
+                onValueChangeFinished = { onChange(minutes.roundToInt() * 60) },
                 valueRange = 0f..30f,
                 steps = 29,
             )
+        }
+    }
+}
+
+@Composable
+private fun NightWorkCard(
+    startMinutes: Int,
+    endMinutes: Int,
+    onChange: (Int, Int) -> Unit,
+    onClear: (Int, Int) -> Unit,
+) {
+    // 슬라이더를 끄는 동안에는 화면 값만 움직이고, 손을 뗄 때 한 번 저장한다. 실제로 지우는
+    // 것은 되돌릴 수 없는 동작이라 아래 버튼을 따로 눌러야 한다.
+    var range by remember(startMinutes, endMinutes) {
+        mutableStateOf(startMinutes.toFloat()..endMinutes.toFloat())
+    }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface,
+    ) {
+        Column(Modifier.padding(18.dp)) {
+            Row {
+                Text(
+                    "야근 시간대",
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    "${formatHhMm(range.start.roundToInt())}–${formatHhMm(range.endInclusive.roundToInt())}",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            Text(
+                text = "이 구간에 이미 쌓인 사용 기록을 0으로 지웁니다. " +
+                    "야근으로 어쩔 수 없이 쓴 시간을 실패로 세지 않기 위한 예외입니다.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(6.dp))
+            RangeSlider(
+                value = range,
+                onValueChange = { range = it },
+                onValueChangeFinished = {
+                    onChange(range.start.roundToInt(), range.endInclusive.roundToInt())
+                },
+                valueRange = 0f..1440f,
+                steps = 47,
+            )
+            Spacer(Modifier.height(6.dp))
+            TextButton(
+                onClick = { onClear(range.start.roundToInt(), range.endInclusive.roundToInt()) },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("이 구간 사용 기록 지우기") }
         }
     }
 }

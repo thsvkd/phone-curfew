@@ -19,6 +19,9 @@ data class CurfewSettings(
     val endMinutes: Int = 420,
     val toleranceSeconds: Int = 300,
     val chartMode: ChartMode = ChartMode.LINE,
+    /** 허용 오차가 30분일 때만 쓰는, 야근으로 예외 처리할 시간대. */
+    val nightWorkStartMinutes: Int = 60,
+    val nightWorkEndMinutes: Int = 180,
 )
 
 class SettingsStore(private val context: Context) {
@@ -40,6 +43,13 @@ class SettingsStore(private val context: Context) {
         context.settingsStore.edit { it[KEY_CHART] = mode.name }
     }
 
+    suspend fun setNightWork(startMinutes: Int, endMinutes: Int) {
+        context.settingsStore.edit {
+            it[KEY_NIGHT_WORK_START] = startMinutes.coerceIn(0, 1439)
+            it[KEY_NIGHT_WORK_END] = endMinutes.coerceIn(0, 1439)
+        }
+    }
+
     private fun Preferences.toSettings(): CurfewSettings {
         val default = CurfewSettings()
         return CurfewSettings(
@@ -48,6 +58,8 @@ class SettingsStore(private val context: Context) {
             toleranceSeconds = this[KEY_TOLERANCE] ?: default.toleranceSeconds,
             chartMode = runCatching { ChartMode.valueOf(this[KEY_CHART] ?: "") }
                 .getOrDefault(default.chartMode),
+            nightWorkStartMinutes = this[KEY_NIGHT_WORK_START] ?: default.nightWorkStartMinutes,
+            nightWorkEndMinutes = this[KEY_NIGHT_WORK_END] ?: default.nightWorkEndMinutes,
         )
     }
 
@@ -56,5 +68,7 @@ class SettingsStore(private val context: Context) {
         val KEY_END = intPreferencesKey("curfewEndMinutes")
         val KEY_TOLERANCE = intPreferencesKey("toleranceSeconds")
         val KEY_CHART = stringPreferencesKey("chartMode")
+        val KEY_NIGHT_WORK_START = intPreferencesKey("nightWorkStartMinutes")
+        val KEY_NIGHT_WORK_END = intPreferencesKey("nightWorkEndMinutes")
     }
 }

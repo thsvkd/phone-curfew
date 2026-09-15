@@ -67,6 +67,10 @@ interface CurfewDao {
     @Query("SELECT * FROM usage_bucket ORDER BY bucketStartMs")
     suspend fun allBuckets(): List<UsageBucket>
 
+    /** 야근 시간대로 지정된 구간의 사용 기록을 0으로 되돌린다. */
+    @Query("UPDATE usage_bucket SET usedSeconds = 0 WHERE bucketStartMs >= :fromMs AND bucketStartMs < :toMs")
+    suspend fun zeroUsage(fromMs: Long, toMs: Long)
+
     @Query("SELECT * FROM coverage_gap WHERE startMs < :toMs AND endMs > :fromMs ORDER BY startMs")
     fun gapsOverlapping(fromMs: Long, toMs: Long): Flow<List<CoverageGap>>
 
