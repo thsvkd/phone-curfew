@@ -156,7 +156,7 @@ private fun PermissionCard(onFix: () -> Unit) {
             }
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "사용량 접근 권한이 꺼져 있어 이 기간은 판정할 수 없습니다.",
+                text = "권한이 꺼진 동안은 판정할 수 없습니다.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
@@ -205,7 +205,7 @@ private fun CurfewCard(state: HomeState, onCurfewChange: (Int, Int) -> Unit) {
         }
         Spacer(Modifier.height(12.dp))
         Text(
-            text = "이 시간대의 사용량으로 그날의 성공 여부를 판정합니다. 앱이 차단하지는 않습니다.",
+            text = "이 시간대의 사용량으로 성공 여부를 판정합니다.\n앱을 차단하지는 않습니다.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
