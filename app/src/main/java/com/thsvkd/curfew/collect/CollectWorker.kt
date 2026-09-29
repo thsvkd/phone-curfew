@@ -6,6 +6,7 @@ import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.PowerManager
 import android.os.Process
 import android.provider.Settings
@@ -44,8 +45,12 @@ object UsageAccess {
         return mode == AppOpsManager.MODE_ALLOWED
     }
 
-    fun settingsIntent(): Intent =
-        Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    /** [packageName]을 주면 Android 10 이상에서 이 앱 항목이 바로 열린다. 그보다 낮으면 무시되어 목록이 열린다. */
+    fun settingsIntent(packageName: String? = null): Intent =
+        Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+            if (packageName != null) data = Uri.parse("package:$packageName")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
 }
 
 class CollectWorker(

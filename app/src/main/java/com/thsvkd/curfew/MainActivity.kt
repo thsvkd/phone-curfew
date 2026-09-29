@@ -1,5 +1,6 @@
 package com.thsvkd.curfew
 
+import android.content.ActivityNotFoundException
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -47,7 +48,14 @@ class MainActivity : ComponentActivity() {
                     onPauseOrDispose { }
                 }
 
-                val openUsageAccess = { startActivity(UsageAccess.settingsIntent()) }
+                val openUsageAccess = {
+                    // 앱 항목을 바로 여는 방식을 받지 않는 기기에서는 일반 화면으로 되돌린다.
+                    try {
+                        startActivity(UsageAccess.settingsIntent(packageName))
+                    } catch (_: ActivityNotFoundException) {
+                        startActivity(UsageAccess.settingsIntent())
+                    }
+                }
 
                 Surface(
                     modifier = Modifier

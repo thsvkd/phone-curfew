@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -33,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -67,10 +69,7 @@ fun HomeScreen(
         Header(state, onOpenSettings)
 
         if (!state.permissionGranted) {
-            Banner(
-                text = "사용량 접근 권한이 꺼져 있어 기록을 모을 수 없습니다. 눌러서 켜 주세요.",
-                onClick = onFixPermission,
-            )
+            PermissionCard(onFixPermission)
         } else if (state.stale) {
             Banner(
                 text = "하루 넘게 기록이 쌓이지 않았습니다. 절전 설정에서 이 앱을 제외해 주세요.",
@@ -79,8 +78,10 @@ fun HomeScreen(
         }
 
         CurfewCard(state, onCurfewChange)
-        WeekCard(state, onShowDate)
-        ChartCard(state, onChartMode, onShiftDate)
+        // 권한이 없으면 아래 결과는 측정된 값이 아니므로 흐리게 보인다.
+        val dim = if (state.permissionGranted) 1f else 0.45f
+        Box(Modifier.alpha(dim)) { WeekCard(state, onShowDate) }
+        Box(Modifier.alpha(dim)) { ChartCard(state, onChartMode, onShiftDate) }
     }
 }
 
@@ -127,6 +128,41 @@ private fun Banner(text: String, onClick: () -> Unit) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.error,
         )
+    }
+}
+
+@Composable
+private fun PermissionCard(onFix: () -> Unit) {
+    val error = MaterialTheme.colorScheme.error
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = CardShape,
+        color = error.copy(alpha = 0.14f),
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier.size(28.dp).background(error, CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("!", color = MaterialTheme.colorScheme.background, fontWeight = FontWeight.ExtraBold)
+                }
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    text = "사용 시간을 측정하지 못하고 있습니다",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = error,
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "사용량 접근 권한이 꺼져 있어 이 기간은 판정할 수 없습니다.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(Modifier.height(12.dp))
+            Button(onClick = onFix, shape = RoundedCornerShape(14.dp)) { Text("권한 켜기") }
+        }
     }
 }
 
