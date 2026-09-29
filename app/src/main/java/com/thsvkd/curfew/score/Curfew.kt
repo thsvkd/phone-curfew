@@ -46,6 +46,18 @@ fun usedSecondsIn(window: Window, buckets: List<UsageBucket>): Double =
 fun Window.overlaps(gap: CoverageGap): Boolean = gap.startMs < endMs && gap.endMs > startMs
 
 /**
+ * 수집기가 기록하지 못한 구간을 공백으로 돌려준다. 권한이 없으면 수집 작업이 아무것도 남기지
+ * 않고 끝나므로 `coverage_gap` 행이 생기지 않고, 그대로 채점하면 빈 창이 사용 0초, 곧 성공이
+ * 된다. 수집 이력이 없으면 설치 이전부터, 권한이 꺼져 있으면 마지막 수집 이후부터 지금까지가
+ * 공백이다.
+ */
+fun unrecordedGaps(lastCursorMs: Long?, granted: Boolean, nowMs: Long): List<CoverageGap> = when {
+    lastCursorMs == null -> listOf(CoverageGap(0L, nowMs))
+    !granted && lastCursorMs < nowMs -> listOf(CoverageGap(lastCursorMs, nowMs))
+    else -> emptyList()
+}
+
+/**
  * 하루를 판정한다. 순서가 중요하다. 아직 안 끝난 창을 먼저 걸러 내고, 그다음 데이터가 성한지
  * 보고, 마지막에 채점한다. 수집 공백을 성공으로 오판하지 않기 위한 순서다.
  */

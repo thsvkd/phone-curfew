@@ -5,6 +5,7 @@ import com.thsvkd.curfew.data.CoverageGap
 import com.thsvkd.curfew.data.UsageBucket
 import com.thsvkd.curfew.score.DayStatus
 import com.thsvkd.curfew.score.score
+import com.thsvkd.curfew.score.unrecordedGaps
 import com.thsvkd.curfew.score.usedSecondsIn
 import com.thsvkd.curfew.score.windowFor
 import com.thsvkd.curfew.score.windowLengthMinutes
@@ -115,5 +116,36 @@ class CurfewTest {
 
         assertEquals(300, usedSecondsIn(window, buckets).roundToInt())
         assertEquals(SLOT_MS / 2, window.startMs - at(DAY, 2))
+    }
+
+    @Test
+    fun `수집이 한 번도 없었다면 지난 창은 기록 없음이다`() {
+        val window = windowFor(DAY, ZONE, 120, 420)!!
+        val now = at(DAY, 20)
+
+        assertEquals(
+            DayStatus.NO_DATA,
+            score(window, now, emptyList(), unrecordedGaps(null, granted = false, nowMs = now), 300),
+        )
+    }
+
+    @Test
+    fun `권한이 꺼진 동안의 창은 기록 없음이다`() {
+        val window = windowFor(DAY, ZONE, 120, 420)!!
+        val now = at(DAY, 20)
+        val lastCursor = at(DAY.minusDays(3), 9)
+
+        assertEquals(
+            DayStatus.NO_DATA,
+            score(window, now, emptyList(), unrecordedGaps(lastCursor, granted = false, nowMs = now), 300),
+        )
+    }
+
+    @Test
+    fun `권한이 켜져 있고 수집 중이면 공백을 더하지 않는다`() {
+        assertEquals(
+            emptyList<CoverageGap>(),
+            unrecordedGaps(at(DAY, 19), granted = true, nowMs = at(DAY, 20)),
+        )
     }
 }

@@ -17,6 +17,7 @@ import com.thsvkd.curfew.score.DayResult
 import com.thsvkd.curfew.score.DayStatus
 import com.thsvkd.curfew.score.score
 import com.thsvkd.curfew.score.streakOf
+import com.thsvkd.curfew.score.unrecordedGaps
 import com.thsvkd.curfew.score.usedSecondsIn
 import com.thsvkd.curfew.score.windowFor
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -107,12 +108,13 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         today: LocalDate,
         granted: Boolean,
         buckets: List<UsageBucket>,
-        gaps: List<CoverageGap>,
+        recordedGaps: List<CoverageGap>,
         collector: CollectorState?,
         dayStart: Long,
         dayEnd: Long,
     ): HomeState {
         val now = System.currentTimeMillis()
+        val gaps = recordedGaps + unrecordedGaps(collector?.lastCursorMs, granted, now)
 
         val week = (6L downTo 0L).map { back ->
             val d = today.minusDays(back)
