@@ -3,11 +3,18 @@ package com.thsvkd.curfew.score
 import com.thsvkd.curfew.collect.SLOT_MS
 import com.thsvkd.curfew.data.CoverageGap
 import com.thsvkd.curfew.data.UsageBucket
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlin.math.roundToInt
 
 const val MINUTES_PER_DAY = 1440
+
+/** 그 시각이 로컬 하루 안에서 몇 분째인지. 그래프의 "지금" 선이 놓일 자리를 구하는 데 쓴다. */
+fun minuteOfDay(nowMs: Long, zone: ZoneId): Int {
+    val t = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalTime()
+    return t.hour * 60 + t.minute
+}
 
 enum class DayStatus { SUCCESS, FAIL, IN_PROGRESS, NO_DATA }
 

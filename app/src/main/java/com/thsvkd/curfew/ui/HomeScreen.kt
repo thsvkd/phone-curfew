@@ -373,6 +373,7 @@ private fun ChartCard(
             curfewStartMinutes = state.settings.startMinutes,
             curfewEndMinutes = state.settings.endMinutes,
             mode = state.settings.chartMode,
+            nowMinutes = state.nowMinutes,
             modifier = Modifier.fillMaxWidth().height(170.dp),
         )
         Spacer(Modifier.height(10.dp))

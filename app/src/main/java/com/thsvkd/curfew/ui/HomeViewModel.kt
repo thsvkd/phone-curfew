@@ -15,6 +15,7 @@ import com.thsvkd.curfew.data.SettingsStore
 import com.thsvkd.curfew.data.UsageBucket
 import com.thsvkd.curfew.score.DayResult
 import com.thsvkd.curfew.score.DayStatus
+import com.thsvkd.curfew.score.minuteOfDay
 import com.thsvkd.curfew.score.score
 import com.thsvkd.curfew.score.streakOf
 import com.thsvkd.curfew.score.unrecordedGaps
@@ -47,6 +48,8 @@ data class HomeState(
     val gapSlots: Set<Int> = emptySet(),
     val dayTotalSeconds: Int = 0,
     val curfewSeconds: Int = 0,
+    /** 보고 있는 날이 오늘일 때만 현재 시각(하루 안의 분). 그래프의 "지금" 선이 이 값을 따른다. */
+    val nowMinutes: Int? = null,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -59,8 +62,11 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val selectedDate = MutableStateFlow(LocalDate.now())
     private val permission = MutableStateFlow(UsageAccess.isGranted(app))
 
+    // 앱이 앞으로 올라올 때마다 올려서 "지금" 선을 새 시각으로 다시 그리게 한다.
+    private val resumeTick = MutableStateFlow(0)
+
     val state: StateFlow<HomeState> =
-        combine(settings.flow, selectedDate, permission) { s, date, granted -> Triple(s, date, granted) }
+        combine(settings.flow, selectedDate, permission, resumeTick) { s, date, granted, _ -> Triple(s, date, granted) }
             .flatMapLatest { (s, date, granted) ->
                 val today = LocalDate.now(zone)
                 val dayStart = date.atStartOfDay(zone).toInstant().toEpochMilli()
@@ -83,6 +89,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     fun refresh() {
         permission.value = UsageAccess.isGranted(getApplication())
+        resumeTick.value++
     }
 
     fun showDate(date: LocalDate) {
@@ -149,6 +156,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             gapSlots = gapSlots,
             dayTotalSeconds = slots.sum(),
             curfewSeconds = curfewSeconds,
+            nowMinutes = if (date == today) minuteOfDay(now, zone) else null,
         )
     }
 }

@@ -4,6 +4,7 @@ import com.thsvkd.curfew.collect.SLOT_MS
 import com.thsvkd.curfew.data.CoverageGap
 import com.thsvkd.curfew.data.UsageBucket
 import com.thsvkd.curfew.score.DayStatus
+import com.thsvkd.curfew.score.minuteOfDay
 import com.thsvkd.curfew.score.score
 import com.thsvkd.curfew.score.unrecordedGaps
 import com.thsvkd.curfew.score.usedSecondsIn
@@ -29,6 +30,13 @@ private fun bucket(date: LocalDate, hour: Int, minute: Int, seconds: Int) =
     UsageBucket(at(date, hour, minute), seconds)
 
 class CurfewTest {
+
+    @Test
+    fun `현재 시각을 하루 안의 분으로 바꾼다`() {
+        assertEquals(0, minuteOfDay(at(DAY, 0, 0), ZONE))
+        assertEquals(14 * 60 + 35, minuteOfDay(at(DAY, 14, 35), ZONE))
+        assertEquals(1439, minuteOfDay(at(DAY, 23, 59), ZONE))
+    }
 
     @Test
     fun `자정을 넘는 커퓨의 길이를 구한다`() {

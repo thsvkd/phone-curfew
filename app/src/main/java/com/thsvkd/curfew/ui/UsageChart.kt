@@ -8,6 +8,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextStyle
@@ -32,6 +33,8 @@ fun UsageChart(
     curfewStartMinutes: Int,
     curfewEndMinutes: Int,
     mode: ChartMode,
+    /** 보고 있는 날이 오늘일 때만 값이 있다. 그 위치에 "지금" 선을 긋는다. */
+    nowMinutes: Int?,
     modifier: Modifier = Modifier,
 ) {
     val extras = LocalCurfewColors.current
@@ -42,7 +45,7 @@ fun UsageChart(
     Canvas(modifier) {
         if (slots.isEmpty()) return@Canvas
 
-        val top = 4.dp.toPx()
+        val top = 14.dp.toPx()  // "지금" 라벨이 앉을 자리
         val plotLeft = 22.dp.toPx()
         val plotRight = size.width
         val plotBottom = size.height - 18.dp.toPx()
@@ -104,6 +107,20 @@ fun UsageChart(
                 }
                 drawPath(line, accent, style = Stroke(width = 2.dp.toPx()))
             }
+        }
+
+        if (nowMinutes != null && nowMinutes in 0 until MINUTES_PER_DAY) {
+            val x = plotLeft + plotWidth * (nowMinutes.toFloat() / MINUTES_PER_DAY)
+            drawLine(
+                color = accent,
+                start = Offset(x, top),
+                end = Offset(x, plotBottom),
+                strokeWidth = 1.dp.toPx(),
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx())),
+            )
+            val label = measurer.measure("지금", labelStyle.copy(color = accent))
+            val labelX = (x - label.size.width / 2f).coerceIn(plotLeft, plotRight - label.size.width)
+            drawText(label, topLeft = Offset(labelX, top - 2.dp.toPx() - label.size.height))
         }
 
         listOf(0, 6, 12, 18, 24).forEach { hour ->
