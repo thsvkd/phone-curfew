@@ -44,10 +44,12 @@ sha="$(CURFEW_TMP_STOREPASS="$storepass" keytool -list -v -keystore "$tmp" -stor
   -alias "$alias_name" 2>/dev/null | awk -F'SHA256: ' '/SHA256:/ {print $2; exit}')"
 [[ -n "$sha" ]] || fail "만든 키스토어를 열지 못했다."
 
-base64 -i "$tmp" | tr -d '\n' | put "${PREFIX}_KEYSTORE_B64"
+# 키스토어를 맨 마지막에 넣는다. 위의 "이미 있다" 판별이 KEYSTORE_B64 를 보므로, 중간에 끊기면
+# 비밀번호 없는 키스토어가 남아 다시 실행할 수 없게 되는 일을 막는다.
 printf '%s' "$storepass" | put "${PREFIX}_STORE_PASSWORD"
 printf '%s' "$alias_name" | put "${PREFIX}_KEY_ALIAS"
 # PKCS12 는 키 비밀번호가 저장소 비밀번호와 같다.
 printf '%s' "$storepass" | put "${PREFIX}_KEY_PASSWORD"
+base64 -i "$tmp" | tr -d '\n' | put "${PREFIX}_KEYSTORE_B64"
 echo "저장했다: ${PREFIX}_{KEYSTORE_B64,STORE_PASSWORD,KEY_ALIAS,KEY_PASSWORD} → $PROJECT/$CONFIG"
 echo "업로드 인증서 SHA-256: $sha"

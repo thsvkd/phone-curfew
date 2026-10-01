@@ -31,9 +31,11 @@ export PATH="${JAVA_HOME:-/nonexistent}/bin:$PATH"
 [[ -n "${ANDROID_HOME:-}" && -d "$ANDROID_HOME" ]] || fail "ANDROID_HOME 이 없다."
 java -version 2>&1 | grep -Eq 'version "(1[7-9]|[2-9][0-9])' || fail "JDK 17 이상이 필요하다(JAVA_HOME=${JAVA_HOME:-없음})."
 command -v doppler >/dev/null || fail "doppler CLI 가 없다."
-# ~/.gradle/gradle.properties 의 값이 환경변수보다 앞서므로, 거기 다른 키가 있으면 그 키로 서명된다.
-if grep -qs '^CURFEW_KEYSTORE' "${GRADLE_USER_HOME:-$HOME/.gradle}/gradle.properties"; then
-  fail "~/.gradle/gradle.properties 에 CURFEW_KEYSTORE 가 있다. Play 용은 Doppler 의 업로드 키만 쓰므로 그 줄을 빼고 다시 실행한다."
+# 서명 값은 ORG_GRADLE_PROJECT_* 환경변수로 넘긴다. 이 값은 ~/.gradle/gradle.properties 보다 앞서지만
+# -Dorg.gradle.project.* 시스템 프로퍼티에는 진다. 그런 값이 끼어 있으면 다른 키로 서명될 수 있어 멈춘다.
+# (그래도 다른 키로 서명되면 아래 인증서 지문 확인이 잡는다.)
+if [[ "${GRADLE_OPTS:-} ${JAVA_OPTS:-}" == *org.gradle.project.CURFEW_* ]]; then
+  fail "GRADLE_OPTS 나 JAVA_OPTS 에 org.gradle.project.CURFEW_* 가 있다. 빼고 다시 실행한다."
 fi
 
 cd "$ROOT"
@@ -78,20 +80,21 @@ KEYSTORE_SHA256="$(awk -F'SHA256: ' '/SHA256:/ {print $2; exit}' <<<"$KEYSTORE_L
 
 echo "== 커퓨 $VERSION_NAME ($APP_ID, versionCode $VERSION_CODE) bundleRelease"
 # 데몬 없이 돌린다. 업로드 키 비밀번호가 든 환경을 빌드가 끝난 뒤까지 들고 있는 프로세스를 남기지 않는다.
+# Kotlin 컴파일도 따로 데몬을 띄우면 그 환경을 물려받으므로 Gradle 프로세스 안에서 돌린다.
 # app/build.gradle.kts 는 이 네 값을 Gradle 프로퍼티(ORG_GRADLE_PROJECT_*)로 읽어 release 서명 설정을 만든다.
 ORG_GRADLE_PROJECT_CURFEW_KEYSTORE="$TEMP_KEYSTORE" \
 ORG_GRADLE_PROJECT_CURFEW_KEYSTORE_PASSWORD="$UPLOAD_STORE_PASSWORD" \
 ORG_GRADLE_PROJECT_CURFEW_KEY_ALIAS="$UPLOAD_KEY_ALIAS" \
 ORG_GRADLE_PROJECT_CURFEW_KEY_PASSWORD="$UPLOAD_KEY_PASSWORD" \
-  ./gradlew --no-daemon clean :app:bundleRelease
+  ./gradlew --no-daemon -Pkotlin.compiler.execution.strategy=in-process clean :app:bundleRelease
 
 BUILT="$ROOT/app/build/outputs/bundle/release/app-release.aab"
 [[ -s "$BUILT" ]] || fail "AAB 가 만들어지지 않았다: $BUILT"
 OUT_DIR="$ROOT/dist-release"
 mkdir -p "$OUT_DIR"
 FINAL="$OUT_DIR/curfew-$VERSION_NAME-play.aab"
-rm -f "$FINAL"
-# 확인하는 동안은 다른 이름으로 두고, 모두 통과해야 최종 이름으로 옮긴다.
+# 확인하는 동안은 다른 이름으로 두고, 모두 통과해야 최종 이름으로 옮긴다. 같은 버전의 이전 AAB 는
+# 새 것이 통과해 덮어쓸 때까지 그대로 둔다.
 OUT="$FINAL.unchecked"
 cp "$BUILT" "$OUT"
 
