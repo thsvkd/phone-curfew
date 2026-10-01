@@ -29,7 +29,7 @@ Kotlin · Jetpack Compose · Room · WorkManager. 차트 라이브러리는 쓰�
 
 ## 빌드
 
-JDK 17 이상과 Android SDK 35가 필요하다.
+JDK 17 이상과 Android SDK 36이 필요하다.
 
 ```bash
 ./gradlew assembleDebug            # APK
@@ -55,15 +55,27 @@ adb shell appops set com.thsvkd.curfew GET_USAGE_STATS allow
 
 ## 릴리즈
 
-서명 자격 증명을 `~/.gradle/gradle.properties`에 둔 뒤 `./gradlew assembleRelease`로 만든다.
+### Google Play (내부 테스트)
 
-```properties
-CURFEW_KEYSTORE=<키스토어 경로>
-CURFEW_KEYSTORE_PASSWORD=<비밀번호>
-CURFEW_KEY_ALIAS=curfew
-CURFEW_KEY_PASSWORD=<비밀번호>
+Play 앱 서명을 쓴다. 앱 서명 키는 Google이 갖고, 이 저장소는 업로드 키로 서명한 AAB만 만든다.
+업로드 키는 Doppler `dev/dev`의 `CURFEW_ANDROID_RELEASE_*`에 있고, 빌드할 때만 임시 파일로 꺼낸다.
+
+```bash
+scripts/release-play.sh   # dist-release/curfew-<버전>-play.aab
 ```
 
-이 값이 없으면 서명 설정 자체를 만들지 않으므로, 키가 없는 환경에서도 체크아웃과 디버그
-빌드는 그대로 된다. 키스토어를 잃어버리면 기존 설치 위에 덮어쓸 수 없고, 재설치하면 그때까지
-쌓인 기록이 사라진다.
+스크립트는 서명 인증서가 업로드 키와 같은지, 디버그 불가인지, 인터넷 권한과 광고 ID 권한이 없는지,
+versionCode와 targetSdk가 `app/build.gradle.kts`와 같은지 확인한 뒤에만 AAB를 남긴다. 올리는 일은
+Play 콘솔의 테스트 → 내부 테스트 → 새 버전 만들기에서 손으로 한다. 올릴 때마다 versionCode를 올린다.
+
+업로드 키를 처음 만들 때만 `scripts/doppler-store-upload-key.sh`를 쓴다. 이미 있으면 덮어쓰지 않는다.
+업로드 키를 잃어버려도 앱은 살아 있고, Play 콘솔에서 업로드 키 재설정을 요청하면 된다.
+
+개인정보처리방침은 `docs/privacy.html`이고 GitHub Pages로
+<https://thsvkd.github.io/phone-curfew/privacy.html>에 올라간다. 앱 설정 화면과 Play 등록정보가 이 주소를
+가리킨다. 스토어 이미지와 스크린샷은 `store/`에 있다.
+
+### GitHub 릴리즈 APK
+
+v1.0.x는 별도 키(`CN=phone-curfew`)로 서명한 APK를 GitHub 릴리즈로 냈다. Play 버전과 서명이 달라 서로
+덮어쓰지 못하므로, 옮기려면 기존 앱을 지우고 Play에서 다시 받는다. 지우면 그때까지 쌓인 기록이 사라진다.

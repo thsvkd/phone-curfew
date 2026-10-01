@@ -24,3 +24,6 @@ signing.properties
 # OS
 .DS_Store
 Thumbs.db
+
+# Play 용 AAB 출력
+dist-release/
