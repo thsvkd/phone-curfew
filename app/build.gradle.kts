@@ -7,12 +7,12 @@ plugins {
 
 android {
     namespace = "com.thsvkd.curfew"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.thsvkd.curfew"
         minSdk = 29
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 3
         versionName = "1.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
