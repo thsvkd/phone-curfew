@@ -176,7 +176,11 @@ fun SettingsScreen(onBack: () -> Unit, onFixPermission: () -> Unit) {
         ActionCard(
             title = "개인정보처리방침",
             body = "기록은 이 기기 밖으로 나가지 않습니다. 눌러서 전문을 봅니다.",
-            onClick = { uriHandler.openUri(PRIVACY_POLICY_URL) },
+            onClick = {
+                // 브라우저가 없는 기기(업무 프로필 등)에서는 openUri 가 예외를 던진다.
+                runCatching { uriHandler.openUri(PRIVACY_POLICY_URL) }
+                    .onFailure { vm.message.value = "브라우저를 열 수 없습니다. $PRIVACY_POLICY_URL" }
+            },
         )
 
         ActionCard(

@@ -3,6 +3,7 @@ package com.thsvkd.curfew
 import android.content.ActivityNotFoundException
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.WindowInsets
@@ -64,6 +65,8 @@ class MainActivity : ComponentActivity() {
                         .consumeWindowInsets(WindowInsets.systemBars),
                     color = MaterialTheme.colorScheme.background,
                 ) {
+                    // 시스템 뒤로 가기가 앱을 닫지 않고 홈으로 돌아오게 한다.
+                    BackHandler(enabled = showSettings) { showSettings = false }
                     if (showSettings) {
                         SettingsScreen(
                             onBack = { showSettings = false },
