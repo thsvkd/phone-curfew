@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>커퓨 개인정보처리방침</title>
+<style>
+  :root { --bg: #f6f5fb; --fg: #1d1b26; --muted: #625d75; --card: #ffffff; --line: #e4e1ef; --accent: #6a4fe0; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #15131c; --fg: #ece9f6; --muted: #a39db8; --card: #1e1b28; --line: #2e2a3b; --accent: #a996ff; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.7 system-ui, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; word-break: keep-all; }
+  main { max-width: 720px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 1.6rem; margin: 0 0 4px; }
+  h2 { font-size: 1.1rem; margin: 32px 0 8px; }
+  p, li { color: var(--fg); }
+  .muted { color: var(--muted); font-size: .92rem; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 4px 20px; margin-top: 20px; }
+  a { color: var(--accent); }
+  ul { padding-left: 1.2em; }
+</style>
+</head>
+<body>
+<main>
+<h1>커퓨 개인정보처리방침</h1>
+<p class="muted">시행일: 2026년 10월 1일</p>
+
+<div class="card">
+<p><b>요약:</b> 커퓨는 휴대폰 사용 시간을 이 기기 안에서만 기록하고 판정합니다.
+인터넷 권한이 없어서 어떤 정보도 기기 밖으로 보내지 않고, 운영자를 포함해 누구와도 공유하지 않습니다.</p>
+</div>
+
+<h2>1. 다루는 정보</h2>
+<ul>
+<li><b>휴대폰 사용 시간</b>: Android의 사용량 접근 권한(<code>PACKAGE_USAGE_STATS</code>)으로 화면이 켜져 앱을 쓰던 시간을 읽어,
+10분 단위 칸마다 몇 초를 썼는지만 저장합니다. 어떤 앱을 썼는지, 앱 안에서 무엇을 했는지는 저장하지 않습니다.</li>
+<li><b>수집 상태</b>: 다음 수집을 이어 붙이려고 마지막으로 읽은 시각과 그때 화면이 켜져 있었는지, 잠금이 풀려 있었는지를 저장합니다.
+권한이 꺼져 있는 등 기록을 모으지 못한 구간도 저장해, 그 기간은 판정하지 않습니다.
+성공과 실패 판정은 저장하지 않고 화면을 열 때마다 위 기록으로 다시 계산합니다.</li>
+<li><b>설정</b>: 사용 제한 시간대, 허용 오차, 야근 시간대처럼 앱 화면에서 정한 값을 저장합니다.</li>
+</ul>
+<p>이름, 연락처, 위치, 계정, 광고 ID, 기기 식별자는 수집하지 않습니다.</p>
+
+<h2>2. 쓰는 목적</h2>
+<p>사용 제한 시간대에 휴대폰을 썼는지 판정하고, 최근 기록과 시간대별 사용량 그래프를 보여 주는 데만 씁니다.
+앱 사용을 막거나 다른 목적에 쓰지 않습니다.</p>
+
+<h2>3. 보관 위치와 전송</h2>
+<ul>
+<li>모든 정보는 이 기기 안의 앱 전용 저장소에만 둡니다.</li>
+<li>앱에 인터넷 권한이 없어 서버나 제3자에게 보내지 않습니다. 광고와 분석 도구도 쓰지 않습니다.</li>
+<li>Android 자동 백업을 꺼 두어, 사용 기록이 클라우드 백업으로 올라가지 않습니다.</li>
+<li>설정의 <b>CSV로 내보내기</b>를 누르면 사용자가 고른 위치에 기록 파일을 저장합니다. 그 파일을 어디에 두고 누구와 나눌지는 사용자가 정합니다.</li>
+</ul>
+
+<h2>4. 보관 기간과 삭제</h2>
+<ul>
+<li>사용자가 지울 때까지 기기에 남습니다.</li>
+<li>앱의 <b>설정 → 기록 전체 삭제</b>로 언제든 모두 지울 수 있습니다.</li>
+<li>앱을 지우면 기록과 설정이 함께 지워집니다.</li>
+<li>운영자는 사용자의 기록을 갖고 있지 않으므로, 운영자에게 따로 삭제를 요청할 필요가 없습니다.</li>
+</ul>
+
+<h2>5. 권한</h2>
+<p>사용량 접근 권한 하나만 씁니다. 사용자가 시스템 설정에서 직접 켜야 하고, 언제든 끌 수 있습니다.
+끄면 그때부터 기록이 쌓이지 않고 그 기간은 판정하지 않습니다.</p>
+
+<h2>6. 아동</h2>
+<p>만 14세 미만 아동을 대상으로 하지 않습니다.</p>
+
+<h2>7. 변경</h2>
+<p>다루는 정보나 보내는 곳이 바뀌면 이 문서를 고치고 시행일을 새로 적습니다.</p>
+
+<h2>8. 문의</h2>
+<p>개인정보 문의: <a href="mailto:thsxogud1123@gmail.com">thsxogud1123@gmail.com</a></p>
+</main>
+</body>
+</html>

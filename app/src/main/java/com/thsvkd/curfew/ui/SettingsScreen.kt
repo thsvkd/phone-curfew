@@ -33,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -55,6 +56,9 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
+
+/** Play 스토어 등록정보에 적은 것과 같은 주소다. 원본은 저장소의 docs/privacy.html 이다. */
+private const val PRIVACY_POLICY_URL = "https://thsvkd.github.io/phone-curfew/privacy.html"
 
 class SettingsViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -123,6 +127,7 @@ fun SettingsScreen(onBack: () -> Unit, onFixPermission: () -> Unit) {
     val settings by vm.settings.collectAsState()
     val message by vm.message.collectAsState()
     val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
     var confirmClear by remember { mutableStateOf(false) }
 
     val exporter = rememberLauncherForActivityResult(
@@ -166,6 +171,12 @@ fun SettingsScreen(onBack: () -> Unit, onFixPermission: () -> Unit) {
             title = "CSV로 내보내기",
             body = "칸의 시작 시각과 사용 초를 한 줄씩 저장합니다.",
             onClick = { exporter.launch("curfew-usage.csv") },
+        )
+
+        ActionCard(
+            title = "개인정보처리방침",
+            body = "기록은 이 기기 밖으로 나가지 않습니다. 눌러서 전문을 봅니다.",
+            onClick = { uriHandler.openUri(PRIVACY_POLICY_URL) },
         )
 
         ActionCard(
