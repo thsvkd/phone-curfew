@@ -77,6 +77,12 @@ interface CurfewDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun addGap(gap: CoverageGap)
 
+    @Query("SELECT * FROM coverage_gap")
+    suspend fun allGaps(): List<CoverageGap>
+
+    @Query("DELETE FROM coverage_gap WHERE startMs = :startMs")
+    suspend fun deleteGap(startMs: Long)
+
     @Query("SELECT * FROM collector_state WHERE id = 0")
     suspend fun state(): CollectorState?
 

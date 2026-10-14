@@ -30,6 +30,81 @@ import java.util.concurrent.TimeUnit
  */
 const val GAP_THRESHOLD_MS = 6 * 60 * 60 * 1000L
 
+/**
+ * 커서보다 이전으로 이 길이만큼만 거슬러 올라가 보관 여부를 확인한다.
+ * 그 안에 이벤트가 하나라도 남아 있으면 보관 기간이 커서를 덮으므로, 커서 뒤의 정적은
+ * 삭제가 아니라 화면 이벤트가 없었다는 뜻이다. 하나도 없으면 지워졌는지 알 수 없다.
+ */
+const val RETENTION_LOOKBACK_MS = 7L * 24 * 60 * 60 * 1000L
+
+/**
+ * [boundaryMs]보다 이전인 [priorEventMs]가 보관 확인 구간 안에 있으면, 그 시각의 이벤트는
+ * 아직 지워지지 않은 것이다. 그보다 나중 구간은 더 최근이므로 같이 남아 있다.
+ * 설치 이전을 뜻하는 0 시각은 확인할 대상이 아니다.
+ */
+fun provesRetention(
+    boundaryMs: Long,
+    priorEventMs: Long?,
+    lookbackMs: Long = RETENTION_LOOKBACK_MS,
+): Boolean {
+    if (boundaryMs <= 0L || priorEventMs == null || priorEventMs >= boundaryMs) return false
+    return boundaryMs - priorEventMs <= lookbackMs
+}
+
+/** [boundaryMs] 직전, 보관 확인 구간 안에서 가장 최근 이벤트 시각. 없으면 null. */
+fun newestRetainedEventMs(
+    events: List<UsageEventLite>,
+    boundaryMs: Long,
+    lookbackMs: Long = RETENTION_LOOKBACK_MS,
+): Long? = events
+    .asSequence()
+    .map { it.timeStampMs }
+    .filter { provesRetention(boundaryMs, it, lookbackMs) }
+    .maxOrNull()
+
+/**
+ * 수집이 늦어졌을 때 `[fromMs, 첫 이벤트)`를 공백으로 남길지 결정한다.
+ * 6시간 이하면 공백이 아니다. 6시간을 넘어도 커서 이전에 이벤트가 남아 있으면 공백이 아니다.
+ * 남아 있는 이벤트가 없을 때만 공백을 만든다. 첫 이벤트가 없으면 끝은 [nowMs]다.
+ */
+fun coverageGapForLateCollect(
+    fromMs: Long,
+    nowMs: Long,
+    firstEventMs: Long?,
+    priorEventMs: Long?,
+    lookbackMs: Long = RETENTION_LOOKBACK_MS,
+): CoverageGap? {
+    if (nowMs - fromMs <= GAP_THRESHOLD_MS) return null
+    val gapEnd = firstEventMs ?: nowMs
+    if (gapEnd <= fromMs) return null
+    if (provesRetention(fromMs, priorEventMs, lookbackMs)) return null
+    return CoverageGap(fromMs, gapEnd)
+}
+
+/**
+ * 이번 수집에서 만들 공백과 지울 공백의 시작 시각.
+ * 지울 대상은 시작이 0보다 크고, 그 직전 이벤트가 보관 확인 구간 안에 남아 있는 공백뿐이다.
+ */
+fun decideCoverageGaps(
+    fromMs: Long,
+    nowMs: Long,
+    forwardEvents: List<UsageEventLite>,
+    retainedEvents: List<UsageEventLite>,
+    storedGaps: List<CoverageGap>,
+): Pair<CoverageGap?, List<Long>> {
+    val toDelete = storedGaps.mapNotNull { gap ->
+        val prior = newestRetainedEventMs(retainedEvents, gap.startMs)
+        if (provesRetention(gap.startMs, prior)) gap.startMs else null
+    }
+    val toAdd = coverageGapForLateCollect(
+        fromMs = fromMs,
+        nowMs = nowMs,
+        firstEventMs = forwardEvents.minOfOrNull { it.timeStampMs },
+        priorEventMs = newestRetainedEventMs(retainedEvents, fromMs),
+    )
+    return toAdd to toDelete
+}
+
 /** 이만큼 기록이 비면 화면에 경고를 띄운다. */
 const val STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000L
 
@@ -74,13 +149,25 @@ class CollectWorker(
         }
 
         val from = state.lastCursorMs
-        if (now <= from) return@withContext Result.success()
+        val storedGaps = dao.allGaps()
+        val healable = storedGaps.filter { it.startMs > 0L }
+        if (now <= from && healable.isEmpty()) return@withContext Result.success()
 
-        val events = readEvents(context, from, now)
-        if (now - from > GAP_THRESHOLD_MS) {
-            val firstEventMs = events.firstOrNull()?.timeStampMs ?: now
-            if (firstEventMs > from) dao.addGap(CoverageGap(from, firstEventMs))
+        val late = now > from && now - from > GAP_THRESHOLD_MS
+        val retained = if (late || healable.isNotEmpty()) {
+            val boundaries = buildList {
+                if (late) add(from)
+                healable.forEach { add(it.startMs) }
+            }
+            readEventsBefore(context, boundaries)
+        } else {
+            emptyList()
         }
+        val events = if (now > from) readEvents(context, from, now) else emptyList()
+        val (gap, deleteStarts) = decideCoverageGaps(from, now, events, retained, storedGaps)
+        for (startMs in deleteStarts) dao.deleteGap(startMs)
+        if (gap != null) dao.addGap(gap)
+        if (now <= from) return@withContext Result.success()
 
         val segments = UsageCollector.collect(
             events = events,
@@ -106,6 +193,15 @@ class CollectWorker(
             screenOn = power.isInteractive,
             unlocked = !keyguard.isKeyguardLocked,
         )
+    }
+
+    /** [boundaries] 각 시각보다 이전, 보관 확인 구간 안의 이벤트. 끝은 그 시각들을 포함하지 않는다. */
+    private fun readEventsBefore(context: Context, boundaries: List<Long>): List<UsageEventLite> {
+        if (boundaries.isEmpty()) return emptyList()
+        val end = boundaries.max()
+        val begin = (boundaries.min() - RETENTION_LOOKBACK_MS).coerceAtLeast(0L)
+        if (end <= begin) return emptyList()
+        return readEvents(context, begin, end)
     }
 
     private fun readEvents(context: Context, fromMs: Long, toMs: Long): List<UsageEventLite> {

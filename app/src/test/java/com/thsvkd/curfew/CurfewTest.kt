@@ -1,6 +1,13 @@
 package com.thsvkd.curfew
 
+import com.thsvkd.curfew.collect.EventType
+import com.thsvkd.curfew.collect.GAP_THRESHOLD_MS
+import com.thsvkd.curfew.collect.RETENTION_LOOKBACK_MS
 import com.thsvkd.curfew.collect.SLOT_MS
+import com.thsvkd.curfew.collect.UsageEventLite
+import com.thsvkd.curfew.collect.coverageGapForLateCollect
+import com.thsvkd.curfew.collect.decideCoverageGaps
+import com.thsvkd.curfew.collect.provesRetention
 import com.thsvkd.curfew.data.CoverageGap
 import com.thsvkd.curfew.data.UsageBucket
 import com.thsvkd.curfew.score.DayStatus
@@ -155,5 +162,69 @@ class CurfewTest {
             emptyList<CoverageGap>(),
             unrecordedGaps(at(DAY, 19), granted = true, nowMs = at(DAY, 20)),
         )
+    }
+
+    @Test
+    fun `6시간 안의 정적은 공백이 아니다`() {
+        val from = at(DAY, 2, 0)
+        assertNull(coverageGapForLateCollect(from, from + GAP_THRESHOLD_MS, null, null))
+    }
+
+    @Test
+    fun `6시간을 넘겨 수집해도 커서 이전 이벤트가 남아 있으면 공백이 아니다`() {
+        val from = at(DAY, 2, 20)
+        assertNull(
+            coverageGapForLateCollect(from, at(DAY, 10, 48), at(DAY, 2, 25), at(DAY, 2, 0)),
+        )
+    }
+
+    @Test
+    fun `커서 이전을 확인할 수 없으면 늦은 수집은 공백이다`() {
+        val from = at(DAY, 2, 20)
+        val now = at(DAY, 10, 48)
+        assertEquals(CoverageGap(from, now), coverageGapForLateCollect(from, now, null, null))
+    }
+
+    @Test
+    fun `보관 확인 구간 밖의 이벤트는 커서를 증명하지 못한다`() {
+        val from = at(DAY, 2, 20)
+        assertEquals(true, provesRetention(from, from - RETENTION_LOOKBACK_MS))
+        assertEquals(false, provesRetention(from, from - RETENTION_LOOKBACK_MS - 1))
+        assertEquals(false, provesRetention(0L, from))
+    }
+
+    @Test
+    fun `취침 중 8시간 밀려도 직전 사용이 남아 있으면 그날은 성공이다`() {
+        val day = LocalDate.of(2026, 10, 14)
+        val window = windowFor(day, ZONE, 2 * 60, 9 * 60)!!
+        val from = at(day, 2, 20)
+        val now = at(day, 10, 48)
+        val stored = listOf(CoverageGap(from, at(day, 2, 25)))
+        val retained = listOf(UsageEventLite(at(day, 2, 0), EventType.SCREEN_NON_INTERACTIVE))
+        val forward = listOf(UsageEventLite(at(day, 2, 25), EventType.SCREEN_INTERACTIVE))
+
+        val (add, delete) = decideCoverageGaps(from, now, forward, retained, stored)
+
+        assertNull(add)
+        assertEquals(listOf(from), delete)
+        assertEquals(
+            DayStatus.SUCCESS,
+            score(window, now, emptyList(), stored.filter { it.startMs !in delete }, 300),
+        )
+    }
+
+    @Test
+    fun `직전 사용을 확인할 수 없으면 밀린 밤 전체는 기록 없음이다`() {
+        val day = LocalDate.of(2026, 10, 14)
+        val window = windowFor(day, ZONE, 2 * 60, 9 * 60)!!
+        val from = at(day, 2, 20)
+        val now = at(day, 10, 48)
+        val installGap = CoverageGap(0L, at(day.minusDays(20), 0))
+
+        val (add, delete) = decideCoverageGaps(from, now, emptyList(), emptyList(), listOf(installGap))
+
+        assertEquals(CoverageGap(from, now), add)
+        assertEquals(emptyList<Long>(), delete)
+        assertEquals(DayStatus.NO_DATA, score(window, now, emptyList(), listOf(add!!), 300))
     }
 }

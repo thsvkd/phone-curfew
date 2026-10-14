@@ -7,6 +7,7 @@ import com.thsvkd.curfew.collect.DeviceState
 import com.thsvkd.curfew.collect.EventType
 import com.thsvkd.curfew.collect.UsageCollector
 import com.thsvkd.curfew.collect.UsageEventLite
+import com.thsvkd.curfew.collect.decideCoverageGaps
 import com.thsvkd.curfew.data.CoverageGap
 import com.thsvkd.curfew.data.CurfewDao
 import com.thsvkd.curfew.data.CurfewDb
@@ -39,7 +40,10 @@ private const val TOLERANCE_SECONDS = 5 * 60 // 5분
 
 /** 2026년 9월 [day]일 [hour]시 [minute]분(KST)을 밀리초로. */
 private fun at(day: Int, hour: Int, minute: Int = 0): Long =
-    LocalDate.of(2026, 9, day).atStartOfDay(ZONE)
+    at(LocalDate.of(2026, 9, day), hour, minute)
+
+private fun at(date: LocalDate, hour: Int, minute: Int = 0): Long =
+    date.atStartOfDay(ZONE)
         .plusHours(hour.toLong()).plusMinutes(minute.toLong())
         .toInstant().toEpochMilli()
 
@@ -165,6 +169,30 @@ class OvernightE2ETest {
         val status = score(curfewWindow(8), now, buckets, emptyList(), TOLERANCE_SECONDS)
 
         assertEquals(DayStatus.IN_PROGRESS, status)
+    }
+
+    @Test
+    fun 수집이_하룻밤_밀려도_커서_이전_이벤트가_남아_있으면_성공이다() = runTest {
+        // 2026-10-14 02:00–09:00. 02:20에 커서를 남긴 뒤 10:48에야 다시 수집했고,
+        // 02:25에 이벤트가 하나 있어 예전 규칙은 그 5분을 공백으로 저장했다.
+        val day = LocalDate.of(2026, 10, 14)
+        val from = at(day, 2, 20)
+        val now = at(day, 10, 48)
+        dao.addGap(CoverageGap(from, at(day, 2, 25)))
+        dao.addGap(CoverageGap(0L, at(day.minusDays(30), 0)))
+
+        val retained = listOf(UsageEventLite(at(day, 1, 50), EventType.SCREEN_NON_INTERACTIVE))
+        val forward = listOf(UsageEventLite(at(day, 2, 25), EventType.SCREEN_INTERACTIVE))
+        val (add, delete) = decideCoverageGaps(from, now, forward, retained, dao.allGaps())
+        assertEquals(null, add)
+        for (startMs in delete) dao.deleteGap(startMs)
+
+        val gaps = dao.gapsOverlapping(0L, now).first()
+        assertEquals(listOf(0L), gaps.map { it.startMs })
+        assertEquals(
+            DayStatus.SUCCESS,
+            score(windowFor(day, ZONE, 2 * 60, 9 * 60), now, emptyList(), gaps, TOLERANCE_SECONDS),
+        )
     }
 
     @Test
