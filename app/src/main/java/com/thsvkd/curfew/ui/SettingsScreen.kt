@@ -16,8 +16,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RangeSlider
+import androidx.compose.material3.SelectableDates
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -54,6 +59,7 @@ import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
@@ -78,14 +84,14 @@ class SettingsViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { store.setNightWork(startMinutes, endMinutes) }
     }
 
-    /** 오늘 밤 야근 구간에 이미 쌓인 사용 기록을 0으로 지운다. */
-    fun clearNightWorkUsage(startMinutes: Int, endMinutes: Int) {
+    /** [date]의 야근 구간에 이미 쌓인 사용 기록을 0으로 지운다. */
+    fun clearNightWorkUsage(date: LocalDate, startMinutes: Int, endMinutes: Int) {
         viewModelScope.launch {
             val zone = ZoneId.systemDefault()
-            val window = windowFor(LocalDate.now(zone), zone, startMinutes, endMinutes)
+            val window = windowFor(date, zone, startMinutes, endMinutes)
             if (window != null) {
                 dao.zeroUsage(window.startMs, window.endMs)
-                message.value = "야근 시간대 사용 기록을 지웠습니다"
+                message.value = "${date.format(DateTimeFormatter.ofPattern("M월 d일"))} 야근 시간대 사용 기록을 지웠습니다"
             }
         }
     }
@@ -260,17 +266,42 @@ private fun ToleranceCard(toleranceSeconds: Int, onChange: (Int) -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NightWorkCard(
     startMinutes: Int,
     endMinutes: Int,
     onChange: (Int, Int) -> Unit,
-    onClear: (Int, Int) -> Unit,
+    onClear: (LocalDate, Int, Int) -> Unit,
 ) {
     // 슬라이더를 끄는 동안에는 화면 값만 움직이고, 손을 뗄 때 한 번 저장한다. 실제로 지우는
     // 것은 되돌릴 수 없는 동작이라 아래 버튼을 따로 눌러야 한다.
     var range by remember(startMinutes, endMinutes) {
         mutableStateOf(startMinutes.toFloat()..endMinutes.toFloat())
+    }
+    var pickDate by remember { mutableStateOf(false) }
+    if (pickDate) {
+        // DatePicker는 날짜를 UTC 자정 밀리초로 주고받는다.
+        val todayUtcMs = LocalDate.now().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        val state = rememberDatePickerState(
+            initialSelectedDateMillis = todayUtcMs,
+            selectableDates = object : SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long) = utcTimeMillis <= todayUtcMs
+            },
+        )
+        DatePickerDialog(
+            onDismissRequest = { pickDate = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    state.selectedDateMillis?.let {
+                        val date = Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate()
+                        onClear(date, range.start.roundToInt(), range.endInclusive.roundToInt())
+                    }
+                    pickDate = false
+                }) { Text("이 날짜 기록 지우기") }
+            },
+            dismissButton = { TextButton(onClick = { pickDate = false }) { Text("취소") } },
+        ) { DatePicker(state = state) }
     }
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -308,9 +339,15 @@ private fun NightWorkCard(
             )
             Spacer(Modifier.height(6.dp))
             TextButton(
-                onClick = { onClear(range.start.roundToInt(), range.endInclusive.roundToInt()) },
+                onClick = {
+                    onClear(LocalDate.now(), range.start.roundToInt(), range.endInclusive.roundToInt())
+                },
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("이 구간 사용 기록 지우기") }
+            TextButton(
+                onClick = { pickDate = true },
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("날짜를 골라서 지우기") }
         }
     }
 }
