@@ -15,3 +15,7 @@
 3. `SER=emulator-5558 PY=python3 ./capture.sh` — `wm size/density`로 화면을 바꾸고 데모 모드로 상태 표시줄을
    정리한 뒤 캡처, RGB로 변환하고 1080x1920을 검증한다. 끝나면 `wm size reset; wm density reset`.
 4. `python3 make_graphics.py` (Pillow, cairosvg 필요) — 아이콘과 그래픽 이미지.
+
+Windows에서는 Git Bash로 실행하고, `python3`가 Microsoft Store 바로가기라면 `PY=python`처럼 실제 Python을
+지정한다. `capture.sh`는 adb에 넘기는 기기 경로(`/sdcard/...`)를 Git Bash가 Windows 경로로 바꾸지 않도록
+막아 둔다.

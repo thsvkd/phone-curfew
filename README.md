@@ -33,9 +33,13 @@ JDK 17 이상과 Android SDK 36이 필요하다.
 
 ```bash
 ./gradlew assembleDebug            # APK
-./gradlew testDebugUnitTest        # 단위 테스트 16개
-./gradlew connectedDebugAndroidTest # 기기 연결 후 E2E 3개
+./gradlew testDebugUnitTest        # 단위 테스트 26개
+./gradlew connectedDebugAndroidTest # 기기 연결 후 E2E 4개
 ```
+
+Windows에서는 PowerShell이면 `.\gradlew.bat testDebugUnitTest`처럼 `gradlew.bat`을 쓰고, Git Bash면 위
+명령을 그대로 쓴다. Android Studio로 설치한 SDK는 `local.properties`의 `sdk.dir`로 잡힌다.
+`scripts/`와 `store/`의 셸 스크립트는 macOS와 Windows의 Git Bash에서 돈다.
 
 `connectedDebugAndroidTest`의 `OvernightE2ETest`는 밤을 기다리지 않고 일주일치 밤을 15분 주기
 수집으로 재현한다. 정답지가 되는 사용 구간에서 이벤트를 만들고, 실제 Room 데이터베이스를 거쳐
@@ -58,11 +62,16 @@ adb shell appops set com.thsvkd.curfew GET_USAGE_STATS allow
 ### Google Play (내부 테스트)
 
 Play 앱 서명을 쓴다. 앱 서명 키는 Google이 갖고, 이 저장소는 업로드 키로 서명한 AAB만 만든다.
-업로드 키는 Doppler `dev/dev`의 `CURFEW_ANDROID_RELEASE_*`에 있고, 빌드할 때만 임시 파일로 꺼낸다.
+업로드 키는 Doppler 프로젝트 `curfew-signing`의 `dev` 설정에 `CURFEW_ANDROID_RELEASE_*`로 있고, 빌드할
+때만 임시 파일로 꺼낸다. 다른 위치를 쓰려면 `CURFEW_DOPPLER_PROJECT`, `CURFEW_DOPPLER_CONFIG`로 바꾼다.
 
 ```bash
 scripts/release-play.sh   # dist-release/curfew-<버전>-play.aab
 ```
+
+Windows에서는 Git Bash로 실행한다. `JAVA_HOME`과 `ANDROID_HOME`이 비어 있으면 PATH의 JDK와 Android
+Studio 기본 SDK 위치(`%LOCALAPPDATA%\Android\Sdk`)를 쓴다. 앞서 돌던 Gradle 데몬이 `build/`의 파일을
+잡고 있으면 `clean`이 실패하므로, Windows에서는 빌드 전에 데몬을 멈춘다.
 
 스크립트는 서명 인증서가 업로드 키와 같은지, 디버그 불가인지, 인터넷 권한과 광고 ID 권한이 없는지,
 versionCode와 targetSdk가 `app/build.gradle.kts`와 같은지 확인한 뒤에만 AAB를 남긴다. 올리는 일은
@@ -77,5 +86,20 @@ Play 콘솔의 테스트 → 내부 테스트 → 새 버전 만들기에서 손
 
 ### GitHub 릴리즈 APK
 
-v1.0.x는 별도 키(`CN=phone-curfew`)로 서명한 APK를 GitHub 릴리즈로 냈다. Play 버전과 서명이 달라 서로
-덮어쓰지 못하므로, 옮기려면 기존 앱을 지우고 Play에서 다시 받는다. 지우면 그때까지 쌓인 기록이 사라진다.
+Play와 별도로, 다른 키(`CN=phone-curfew`)로 서명한 APK를 GitHub 릴리즈에도 낸다(v1.0.x, v1.2.3).
+v1.0.x를 GitHub에서 받아 쓰던 사람은 이 APK로 기록을 유지한 채 덮어쓸 수 있다. Play 버전과는 서명이
+달라 서로 덮어쓰지 못하므로, 옮기려면 기존 앱을 지우고 다시 받아야 한다. 지우면 그때까지 쌓인 기록이
+사라진다.
+
+이 키의 자격 증명은 `~/.gradle/gradle.properties`(Windows는 `%USERPROFILE%\.gradle\gradle.properties`)에
+두고 `./gradlew assembleRelease`로 만든다. 값이 없으면 서명 설정을 만들지 않으므로, 키가 없는 환경에서도
+체크아웃과 디버그 빌드는 그대로 된다.
+
+```properties
+CURFEW_KEYSTORE=<키스토어 경로>
+CURFEW_KEYSTORE_PASSWORD=<비밀번호>
+CURFEW_KEY_ALIAS=curfew
+CURFEW_KEY_PASSWORD=<비밀번호>
+```
+
+릴리즈에는 `phone-curfew-<버전>.apk`라는 이름으로 첨부한다. 릴리즈 노트의 설치 안내가 이 이름을 가리킨다.
