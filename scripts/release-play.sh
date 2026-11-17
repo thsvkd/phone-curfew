@@ -8,16 +8,21 @@
 # 업로드 키는 scripts/doppler-store-upload-key.sh 로 만든다.
 #
 # 비밀은 Doppler 에 두고 빌드 때만 꺼낸다. 디스크에는 빌드하는 동안의 임시 키스토어뿐이고, 끝나면(실패해도) 지운다.
-#   CURFEW_DOPPLER_PROJECT / CURFEW_DOPPLER_CONFIG   Doppler 위치 (기본 dev / dev)
+#   CURFEW_DOPPLER_PROJECT / CURFEW_DOPPLER_CONFIG   Doppler 위치 (기본 curfew-signing / dev)
 #   JAVA_HOME     JDK 17 이상 (비어 있으면 brew 의 openjdk@21)
-#   ANDROID_HOME  Android SDK (비어 있으면 brew 의 android-commandlinetools)
+#   ANDROID_HOME  Android SDK (비어 있으면 brew 의 android-commandlinetools, Windows 는 Android Studio 기본 위치)
+#
+# macOS 와 Windows 의 Git Bash 에서 돈다. Windows 에서는 Git Bash 로 실행한다(PowerShell 에서는
+# `& "C:\Program Files\Git\bin\bash.exe" scripts/release-play.sh`).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fail() { echo "release-play: $*" >&2; exit 1; }
 
-DOPPLER_PROJECT="${CURFEW_DOPPLER_PROJECT:-dev}"
+DOPPLER_PROJECT="${CURFEW_DOPPLER_PROJECT:-curfew-signing}"
 DOPPLER_CONFIG="${CURFEW_DOPPLER_CONFIG:-dev}"
+
+case "$(uname -s)" in MINGW* | MSYS* | CYGWIN*) WINDOWS=1 ;; *) WINDOWS=0 ;; esac
 
 if [[ -z "${JAVA_HOME:-}" && -d /opt/homebrew/opt/openjdk@21 ]]; then
   export JAVA_HOME=/opt/homebrew/opt/openjdk@21
@@ -25,8 +30,15 @@ fi
 if [[ -z "${ANDROID_HOME:-}" && -d /opt/homebrew/share/android-commandlinetools ]]; then
   export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
 fi
+if [[ "$WINDOWS" == 1 && -z "${ANDROID_HOME:-}" && -n "${LOCALAPPDATA:-}" ]]; then
+  ANDROID_HOME="$(cygpath -u "$LOCALAPPDATA")/Android/Sdk"
+  export ANDROID_HOME
+fi
 export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
-export PATH="${JAVA_HOME:-/nonexistent}/bin:$PATH"
+# Windows 의 JAVA_HOME(C:\...)은 그대로 PATH 에 붙이면 ':' 에서 잘린다.
+JAVA_BIN="${JAVA_HOME:-/nonexistent}"
+if [[ "$WINDOWS" == 1 && -n "${JAVA_HOME:-}" ]]; then JAVA_BIN="$(cygpath -u "$JAVA_HOME")"; fi
+export PATH="${JAVA_BIN%/}/bin:$PATH"
 
 [[ -n "${ANDROID_HOME:-}" && -d "$ANDROID_HOME" ]] || fail "ANDROID_HOME 이 없다."
 java -version 2>&1 | grep -Eq 'version "(1[7-9]|[2-9][0-9])' || fail "JDK 17 이상이 필요하다(JAVA_HOME=${JAVA_HOME:-없음})."
@@ -79,6 +91,9 @@ KEYSTORE_SHA256="$(awk -F'SHA256: ' '/SHA256:/ {print $2; exit}' <<<"$KEYSTORE_L
 [[ -n "$KEYSTORE_SHA256" ]] || fail "업로드 키의 인증서 지문을 읽지 못했다."
 
 echo "== 커퓨 $VERSION_NAME ($APP_ID, versionCode $VERSION_CODE) bundleRelease"
+# Windows 는 열린 파일을 지우지 못한다. 앞서 돌던 Gradle 데몬이 build/ 의 lint 캐시를 잡고 있으면
+# 아래 clean 이 실패하므로 먼저 멈춘다.
+if [[ "$WINDOWS" == 1 ]]; then ./gradlew --stop -q; fi
 # 데몬 없이 돌린다. 업로드 키 비밀번호가 든 환경을 빌드가 끝난 뒤까지 들고 있는 프로세스를 남기지 않는다.
 # Kotlin 컴파일도 따로 데몬을 띄우면 그 환경을 물려받으므로 Gradle 프로세스 안에서 돌린다.
 # app/build.gradle.kts 는 이 네 값을 Gradle 프로퍼티(ORG_GRADLE_PROJECT_*)로 읽어 release 서명 설정을 만든다.
@@ -137,5 +152,6 @@ echo "AAB: $FINAL"
 echo "패키지: $APP_ID  versionCode: $VERSION_CODE  versionName: $VERSION_NAME  targetSdk: $TARGET_SDK"
 echo "업로드 인증서 SHA-256: $SIGNED_SHA256"
 echo "업로드 인증서 SHA-1:   $SIGNED_SHA1"
-echo "AAB SHA-256: $(shasum -a 256 "$FINAL" | awk '{print $1}')"
+if command -v sha256sum >/dev/null; then SHA_CMD=(sha256sum); else SHA_CMD=(shasum -a 256); fi
+echo "AAB SHA-256: $("${SHA_CMD[@]}" "$FINAL" | awk '{print $1}')"
 echo "Play 콘솔 → 테스트 → 내부 테스트 에서 이 AAB 를 올린다. 이 스크립트는 어디에도 올리지 않는다."

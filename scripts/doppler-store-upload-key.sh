@@ -7,10 +7,11 @@
 # 저장 이름은 CURFEW_ANDROID_RELEASE_{KEYSTORE_B64,STORE_PASSWORD,KEY_ALIAS,KEY_PASSWORD} 이다.
 # 이미 있으면 덮어쓰지 않는다(FORCE=1 이면 덮어쓴다). 덮어쓴 키는 되찾을 수 없고, Play 콘솔에서
 # 업로드 키 재설정을 요청해야 한다.
-# 위치는 CURFEW_DOPPLER_PROJECT / CURFEW_DOPPLER_CONFIG (기본 dev / dev).
+# 위치는 CURFEW_DOPPLER_PROJECT / CURFEW_DOPPLER_CONFIG (기본 curfew-signing / dev).
+# macOS 와 Windows 의 Git Bash 에서 돈다.
 set -euo pipefail
 
-PROJECT="${CURFEW_DOPPLER_PROJECT:-dev}"
+PROJECT="${CURFEW_DOPPLER_PROJECT:-curfew-signing}"
 CONFIG="${CURFEW_DOPPLER_CONFIG:-dev}"
 PREFIX=CURFEW_ANDROID_RELEASE
 fail() { echo "doppler-store-upload-key: $*" >&2; exit 1; }
@@ -18,7 +19,10 @@ fail() { echo "doppler-store-upload-key: $*" >&2; exit 1; }
 if [[ -z "${JAVA_HOME:-}" && -d /opt/homebrew/opt/openjdk@21 ]]; then
   export JAVA_HOME=/opt/homebrew/opt/openjdk@21
 fi
-export PATH="${JAVA_HOME:-/nonexistent}/bin:$PATH"
+# Windows 의 JAVA_HOME(C:\...)은 그대로 PATH 에 붙이면 ':' 에서 잘린다.
+JAVA_BIN="${JAVA_HOME:-/nonexistent}"
+if command -v cygpath >/dev/null && [[ -n "${JAVA_HOME:-}" ]]; then JAVA_BIN="$(cygpath -u "$JAVA_HOME")"; fi
+export PATH="${JAVA_BIN%/}/bin:$PATH"
 command -v doppler >/dev/null || fail "doppler CLI 가 없다."
 command -v keytool >/dev/null || fail "keytool(JDK)이 없다. JAVA_HOME 을 JDK 21 로 잡아 준다."
 

@@ -6,13 +6,14 @@ SER=${SER:-emulator-5558}
 PY=${PY:-python3}
 OUT=$(cd "$(dirname "$0")" && pwd)/screenshots
 PKG=com.thsvkd.curfew
-A() { adb -s "$SER" "$@"; }
+# MSYS_NO_PATHCONV: keep Git Bash on Windows from rewriting device paths like /sdcard/ui.xml.
+A() { MSYS_NO_PATHCONV=1 adb -s "$SER" "$@"; }
 
 tap_text() { # tap the center of the UI node whose text equals $1 (optional dy px offset $2)
   A shell uiautomator dump /sdcard/ui.xml >/dev/null
   A exec-out cat /sdcard/ui.xml | "$PY" -c "
 import re,sys,subprocess
-x=sys.stdin.read(); t=sys.argv[1]; dy=int(sys.argv[2])
+x=sys.stdin.buffer.read().decode("utf-8"); t=sys.argv[1]; dy=int(sys.argv[2])
 m=re.search(r'text=\"'+re.escape(t)+r'\"[^>]*bounds=\"\[(\d+),(\d+)\]\[(\d+),(\d+)\]\"',x)
 l,tp,r,b=map(int,m.groups()); cx,cy=(l+r)//2,(tp+b)//2+dy
 subprocess.run(['adb','-s','$SER','shell','input','tap',str(cx),str(cy)])" "$1" "${2:-0}"
@@ -20,11 +21,14 @@ subprocess.run(['adb','-s','$SER','shell','input','tap',str(cx),str(cy)])" "$1" 
 }
 launch() { A shell am force-stop $PKG; A shell am start -n $PKG/.MainActivity >/dev/null; sleep 4; }
 shoot() { # $1 = output basename
-  A exec-out screencap -p > /tmp/_raw.png
+  # Paths go in as argv, not inside the -c source: Git Bash on Windows rewrites /tmp/... argv for a
+  # native python, but not a path baked into the code string.
+  raw="${TMPDIR:-/tmp}/_raw.png"
+  A exec-out screencap -p > "$raw"
   "$PY" -c "
 from PIL import Image; import sys
-im=Image.open('/tmp/_raw.png').convert('RGB'); assert im.size==(1080,1920), im.size
-im.save('$OUT/$1.png')"
+im=Image.open(sys.argv[1]).convert('RGB'); assert im.size==(1080,1920), im.size
+im.save(sys.argv[2])" "$raw" "$OUT/$1.png"
 }
 
 A shell settings put global sysui_demo_allowed 1
